@@ -1,8 +1,8 @@
 {
-    "name": "ProcessID/Manager",
+    "name": "processid/manager",
     "description": "Database management",
     "require": {
         "php": "^5.3",
-        "ProcessID/Encrypt": "1.*"
+        "processid/encrypt": "1.*"
     }
 }
