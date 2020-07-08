@@ -24,10 +24,10 @@
    // - Une instance de \ProcessID\Chiffrement\ChiffrementOpenSSL : $this->dbCrypt() qui apporte chiffre_chaine() et dechiffre_chaine() pré-configurés avec key_aes256 et key_hash512
    
 */   
-   namespace ProcessID\Manager;
+   namespace processid\manager;
    
    use \PDO;
-   use \ProcessID\Encrypt\EncryptOpenSSL;
+   use \processid\encrypt\EncryptOpenSSL;
    
    class DbConnect {
       

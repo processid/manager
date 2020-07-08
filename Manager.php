@@ -17,7 +17,7 @@ public function __construct(\ProcessID\Manager\DbConnect $db) {
 $this->setDb($db);
 $this->setTableName('clients'); // Nom de la table de BD
 $this->setTableIdField('IDclients');  // Nom du champ ID de la table
-$this->setClassName('\Projet\Model\Clients'); // Nom de la classe gérant l'objet fourni au manager
+$this->setClassName('\project\model\Clients'); // Nom de la classe gérant l'objet fourni au manager
 }
 }
 
@@ -37,16 +37,16 @@ $this->create_encrypted_fields_sortable();
 
 // CREATE:
 // Le nouvel ID est enregistré dans $this->IDclients()
-$this->add(\Projet\Model\Clients $obj);
+$this->add(\project\model\Clients $obj);
 
 // READ:
-// get() retourne une instance de \Projet\Model\Clients
+// get() retourne une instance de \project\model\Clients
 // $ID est la valeur recherchée de IDclients
 // Paramètre optionnel : $champs est un champ ex: 'nom', un tableau de champs ex: array('nom','tel') ou '*'
 // Par défaut, si $champs n'est pas fourni, tous les champs sont hydratés
 $this->get($ID, $champs);
 
-// getList() retourne un tableau d'instances de \Projet\Model\Clients
+// getList() retourne un tableau d'instances de \project\model\Clients
 // $ta_IDs est un tableau d'IDclients
 // Paramètre optionnel : $champs est un champ ex: 'nom', un tableau de champs ex: array('nom','tel') ou '*'
 // Par défaut, si $champs n'est pas fourni, tous les champs sont hydratés
@@ -61,7 +61,7 @@ $this->update($object, [$champs]);
 $this->delete($ID);
 
 SEARCH:
-// search() retourne un tableau d'instances de \Projet\Model\Clients 
+// search() retourne un tableau d'instances de \project\model\Clients 
 // $arg : tableau associatif
 // 'fields' => tableau de tableaux des champs à retourner : 'table'=><Nom de la table>, 'field'=><Nom du champ>
 // 'special' chaîne : 'count' ,$this->_nbResults sera mis à jour avec le nombre de résultats de la requête, sans limit ni offset et sans sort. $this->_nbResults sera également retourné
@@ -82,7 +82,7 @@ $arg['sort'][] = array('table'=>'clients','field'=>'nom','reverse'=>false);
 search($arg);
 
 */
-namespace ProcessID\Manager;
+namespace processid\manager;
 
 abstract class Manager {
     protected $db;
@@ -98,7 +98,7 @@ abstract class Manager {
     // La liste des champs est partagée entre toutes les classes qui héritent de la classe Manager (<table>Manager)
     private static $_fieldsList = array();
 
-    public function setDb(\ProcessID\Manager\DbConnect $db) {
+    public function setDb(\processid\manager\DbConnect $db) {
         $this->db = $db;
     }
 
@@ -485,7 +485,7 @@ abstract class Manager {
                 $fields .= ',';
             }
             if (!array_key_exists($ta_field['table'],$ta_tables)) {
-                $classe = 'Projet\Manager\\' . ucfirst($ta_field['table']).'Manager';
+                $classe = 'project\manager\\' . ucfirst($ta_field['table']).'Manager';
                 $obj = new $classe($this->db);
                 $obj->recordFields();
                 $ta_tables = $this->fieldsList();
@@ -517,7 +517,7 @@ abstract class Manager {
 
                 foreach ($arg['search'] as $ta_search) {
                     if (!array_key_exists($ta_search['table'],$ta_tables)) {
-                        $classe = 'Projet\Manager\\' . ucfirst($ta_search['table']).'Manager';
+                        $classe = 'project\manager\\' . ucfirst($ta_search['table']).'Manager';
                         $obj = new $classe($this->db);
                         $obj->recordFields();
                         $ta_tables = $this->fieldsList();
@@ -614,7 +614,7 @@ abstract class Manager {
                             $count = 0;
                             foreach ($arg['sort'] as $ta_sort) {
                                 if (!array_key_exists($ta_sort['table'],$ta_tables)) {
-                                    $classe = 'Projet\Manager\\' . ucfirst($ta_sort['table']).'Manager';
+                                    $classe = 'project\manager\\' . ucfirst($ta_sort['table']).'Manager';
                                     $obj = new $classe($this->db);
                                     $obj->recordFields();
                                     $ta_tables = $this->fieldsList();
