@@ -3,7 +3,8 @@
     "description": "Database management",
     "require": {
         "php": ">=5.4",
-        "processid/encrypt": "1.*"
+        "processid/encrypt": "1.*",
+        "processid/traits": "1.*"
     },
     "autoload": {
         "psr-4": {
