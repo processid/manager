@@ -2,7 +2,7 @@
     "name": "processid/manager",
     "description": "Database management",
     "require": {
-        "php": "^5.3",
+        "php": ">=5.4",
         "processid/encrypt": "1.*"
     }
 }
