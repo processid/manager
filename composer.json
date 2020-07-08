@@ -4,5 +4,10 @@
     "require": {
         "php": ">=5.4",
         "processid/encrypt": "1.*"
-    }
+    },
+    "autoload": {
+        "psr-4": {
+            "processid\\manager\\": "/",
+        }
+    },
 }
