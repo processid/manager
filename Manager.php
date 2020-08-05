@@ -537,8 +537,8 @@ abstract class Manager {
                             $ta_bind[$countBind]['value'] = (int) trim(substr($ta_search['value'], 2));
                             $ta_where[] = $ta_search['table'] . '.' . $this->tableIdField() . '=:bind' . $countBind++;
                         } else {
-                            $recStr = preg_replace("/[[:punct:]]/", " ", $ta_search['value']);
-                            $recStr = preg_replace("/[[:space:]]{2,}/", " ", $recStr);
+                            $recStr = preg_replace("/[[:punct:]]/u", " ", $ta_search['value']);
+                            $recStr = preg_replace("/[[:space:]]{2,}/u", " ", $recStr);
                             $array_rec = explode (" ", trim($recStr));
                             $countMots = 0;
                             $condition_tmp = ' (';
