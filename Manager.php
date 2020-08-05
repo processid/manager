@@ -17,7 +17,7 @@ public function __construct(\ProcessID\Manager\DbConnect $db) {
 $this->setDb($db);
 $this->setTableName('clients'); // Nom de la table de BD
 $this->setTableIdField('IDclients');  // Nom du champ ID de la table
-$this->setClassName('\project\model\Clients'); // Nom de la classe gérant l'objet fourni au manager
+$this->setClassName('\src\model\Clients'); // Nom de la classe gérant l'objet fourni au manager
 }
 }
 
@@ -37,16 +37,16 @@ $this->create_encrypted_fields_sortable();
 
 // CREATE:
 // Le nouvel ID est enregistré dans $this->IDclients()
-$this->add(\project\model\Clients $obj);
+$this->add(\src\model\Clients $obj);
 
 // READ:
-// get() retourne une instance de \project\model\Clients
+// get() retourne une instance de \src\model\Clients
 // $ID est la valeur recherchée de IDclients
 // Paramètre optionnel : $champs est un champ ex: 'nom', un tableau de champs ex: array('nom','tel') ou '*'
 // Par défaut, si $champs n'est pas fourni, tous les champs sont hydratés
 $this->get($ID, $champs);
 
-// getList() retourne un tableau d'instances de \project\model\Clients
+// getList() retourne un tableau d'instances de \src\model\Clients
 // $ta_IDs est un tableau d'IDclients
 // Paramètre optionnel : $champs est un champ ex: 'nom', un tableau de champs ex: array('nom','tel') ou '*'
 // Par défaut, si $champs n'est pas fourni, tous les champs sont hydratés
@@ -61,7 +61,7 @@ $this->update($object, [$champs]);
 $this->delete($ID);
 
 SEARCH:
-// search() retourne un tableau d'instances de \project\model\Clients 
+// search() retourne un tableau d'instances de \src\model\Clients 
 // $arg : tableau associatif
 // 'fields' => tableau de tableaux des champs à retourner : 'table'=><Nom de la table>, 'field'=><Nom du champ>
 // 'special' chaîne : 'count' ,$this->_nbResults sera mis à jour avec le nombre de résultats de la requête, sans limit ni offset et sans sort. $this->_nbResults sera également retourné
@@ -485,7 +485,7 @@ abstract class Manager {
                 $fields .= ',';
             }
             if (!array_key_exists($ta_field['table'],$ta_tables)) {
-                $classe = 'project\manager\\' . ucfirst($ta_field['table']).'Manager';
+                $classe = 'src\manager\\' . ucfirst($ta_field['table']).'Manager';
                 $obj = new $classe($this->db);
                 $obj->recordFields();
                 $ta_tables = $this->fieldsList();
@@ -517,7 +517,7 @@ abstract class Manager {
 
                 foreach ($arg['search'] as $ta_search) {
                     if (!array_key_exists($ta_search['table'],$ta_tables)) {
-                        $classe = 'project\manager\\' . ucfirst($ta_search['table']).'Manager';
+                        $classe = 'src\manager\\' . ucfirst($ta_search['table']).'Manager';
                         $obj = new $classe($this->db);
                         $obj->recordFields();
                         $ta_tables = $this->fieldsList();
@@ -614,7 +614,7 @@ abstract class Manager {
                             $count = 0;
                             foreach ($arg['sort'] as $ta_sort) {
                                 if (!array_key_exists($ta_sort['table'],$ta_tables)) {
-                                    $classe = 'project\manager\\' . ucfirst($ta_sort['table']).'Manager';
+                                    $classe = 'src\manager\\' . ucfirst($ta_sort['table']).'Manager';
                                     $obj = new $classe($this->db);
                                     $obj->recordFields();
                                     $ta_tables = $this->fieldsList();
