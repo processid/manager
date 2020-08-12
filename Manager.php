@@ -61,7 +61,8 @@ $this->update($object, [$champs]);
 $this->delete($ID);
 
 SEARCH:
-// search() retourne un tableau d'instances de \src\model\Clients 
+// search() retourne un tableau associatif des champs demandés dans fields[]
+// Si fields[] est vide, search retourne un tableau d'ID qu'il est possible de passer directement à getList()
 // $arg : tableau associatif
 // 'fields' => tableau de tableaux des champs à retourner : 'table'=><Nom de la table>, 'field'=><Nom du champ>
 // 'special' chaîne : 'count' ,$this->_nbResults sera mis à jour avec le nombre de résultats de la requête, sans limit ni offset et sans sort. $this->_nbResults sera également retourné
