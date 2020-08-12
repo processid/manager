@@ -6,19 +6,19 @@
 
 class Clients extends \ProcessID\Manager\Manager {
 
-// Il est possible d'utiliser des colonnes chiffrées:
-$this->setEncryptedFields(array('nom'=>true,'email'=>true,'tel'=>true,'siret'=>true));
+    // Il est possible d'utiliser des colonnes chiffrées:
+    $this->setEncryptedFields(array('nom'=>true,'email'=>true,'tel'=>true,'siret'=>true));
 
-// Si malgré le chiffrement, certains champs doivent rester triables:
-// Il faut utiliser le démon pour renseigner les colonnes de tri
-$this->setEncryptedFieldsSortable(array('nom'=>true,'email'=>true));
+    // Si malgré le chiffrement, certains champs doivent rester triables:
+    // Il faut utiliser le démon pour renseigner les colonnes de tri
+    $this->setEncryptedFieldsSortable(array('nom'=>true,'email'=>true));
 
-public function __construct(\ProcessID\Manager\DbConnect $db) {
-$this->setDb($db);
-$this->setTableName('clients'); // Nom de la table de BD
-$this->setTableIdField('IDclients');  // Nom du champ ID de la table
-$this->setClassName('\src\model\Clients'); // Nom de la classe gérant l'objet fourni au manager
-}
+    public function __construct(\ProcessID\Manager\DbConnect $db) {
+        $this->setDb($db);
+        $this->setTableName('clients'); // Nom de la table de BD
+        $this->setTableIdField('IDclients');  // Nom du champ ID de la table
+        $this->setClassName('\src\model\Clients'); // Nom de la classe gérant l'objet fourni au manager
+    }
 }
 
 // EXEMPLES D'UTILISATION:
@@ -429,7 +429,7 @@ abstract class Manager {
                 }
             }
 
-            $query = $this->db->pdo()->prepare('SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' IN (' . $IDs . ')');
+            $query = $this->db->pdo()->prepare('SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' IN (' . $IDs . ') ORDER BY FIELD(' . $this->tableIdField() . ', ' . $IDs . ')');
 
             $query->execute();
 
@@ -464,6 +464,9 @@ abstract class Manager {
 
     public function search($arg) {
         $return = array();
+        
+        // Par défaut, on retourne un tableau d'ID
+        $flag_return_id = true;
 
         // Tableau de la structure des tables
         $ta_tables = $this->fieldsList();
@@ -480,24 +483,29 @@ abstract class Manager {
         }
 
         $fields = '';
-        foreach ($arg['fields'] as $ta_field) {
-            if ($fields != '') {
-                $fields .= ',';
+        if (is_array($arg['fields']) && count($arg['fields'])) {
+            $flag_return_id = false;
+            foreach ($arg['fields'] as $ta_field) {
+                if ($fields != '') {
+                    $fields .= ',';
+                }
+                if (!array_key_exists($ta_field['table'],$ta_tables)) {
+                    $classe = 'src\manager\\' . ucfirst($ta_field['table']).'Manager';
+                    $obj = new $classe($this->db);
+                    $obj->recordFields();
+                    $ta_tables = $this->fieldsList();
+                    unset($obj);
+                }
+                if ($ta_field['field'] == '*') {
+                    $fields .= '*';
+                } elseif (!array_key_exists($ta_field['field'],$ta_tables[$ta_field['table']])) {
+                    trigger_error('Le champ : ' . $ta_field['field'] . ' est introuvable dans la table : ' . $ta_field['table'],E_USER_ERROR);
+                } else {
+                    $fields .= $ta_field['table'] . '.' . $ta_field['field'];
+                }
             }
-            if (!array_key_exists($ta_field['table'],$ta_tables)) {
-                $classe = 'src\manager\\' . ucfirst($ta_field['table']).'Manager';
-                $obj = new $classe($this->db);
-                $obj->recordFields();
-                $ta_tables = $this->fieldsList();
-                unset($obj);
-            }
-            if ($ta_field['field'] == '*') {
-                $fields .= '*';
-            } elseif (!array_key_exists($ta_field['field'],$ta_tables[$ta_field['table']])) {
-                trigger_error('Le champ : ' . $ta_field['field'] . ' est introuvable dans la table : ' . $ta_field['table'],E_USER_ERROR);
-            } else {
-                $fields .= $ta_field['table'] . '.' . $ta_field['field'];
-            }
+        } else {
+            $fields = $this->tableName() . '.' . $this->tableIdField();
         }
 
         $requete = 'SELECT ' . $fields;
@@ -674,7 +682,7 @@ abstract class Manager {
 
                     $this->bind_query($query, ':bind' . $key, $type, $infos_bind['value']);
                 }
-
+                
                 $query->execute();
 
                 if ($flag_count) {
@@ -683,17 +691,21 @@ abstract class Manager {
                     return $this->nbResults();
                 } else {
                     while ($results = $query->fetch(\PDO::FETCH_ASSOC)) {
-                        // Champs à déchiffrer
-                        $ta_fields_to_decrypt = array_intersect_key($results,$this->encryptedFields());
-                        foreach ($ta_fields_to_decrypt as $key=>$field_to_decrypt) {
-                            $results[$key] = $this->db->dbCrypt()->decrypt_string($results[$key]);
+                        
+                        if ($flag_return_id) {
+                            $return[] = intval($results[$this->tableIdField()]);
+                        } else {
+                            // Champs à déchiffrer
+                            $ta_fields_to_decrypt = array_intersect_key($results,$this->encryptedFields());
+                            foreach ($ta_fields_to_decrypt as $key=>$field_to_decrypt) {
+                                $results[$key] = $this->db->dbCrypt()->decrypt_string($results[$key]);
+                            }
+                            //$return[] = new $this->className($results);
+                            $return[] = $results;
                         }
-                        $return[] = new $this->className($results);
                     }
                 }
-
-                echo ($requete . '<br>');
-
+                
                 return $return;
             }
         }
