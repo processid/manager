@@ -365,7 +365,8 @@ abstract class Manager {
 
 
     public function get($ID, $ta_fields='*') {
-        if (is_int($ID)) {
+        $ID = intval($ID);
+        if ($ID) {
             $fields = '';
             if (is_array($ta_fields)) {
                 foreach ($ta_fields as $field) {
@@ -383,11 +384,21 @@ abstract class Manager {
                     trigger_error('Champ inconnu : ' . $ta_fields . ' dans la classe : ' . $this->className,E_USER_ERROR);
                 }
             }
-
+            
             $query = $this->db->pdo()->prepare('SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . '=:id');
+            if (!$query) {
+                trigger_error($this->db->pdo()->errorInfo(),E_USER_ERROR);
+            }
+            
             $query->bindValue(':id', $ID, \PDO::PARAM_INT);
-
+            if (!$query) {
+                trigger_error($this->db->pdo()->errorInfo(),E_USER_ERROR);
+            }
+            
             $query->execute();
+            if (!$query) {
+                trigger_error($this->db->pdo()->errorInfo(),E_USER_ERROR);
+            }
 
             if ($results = $query->fetch(\PDO::FETCH_ASSOC)) {
                 // Champs à déchiffrer
@@ -400,7 +411,8 @@ abstract class Manager {
                 return false;
             }
         } else {
-            trigger_error('L\'ID doit etre un entier',E_USER_ERROR);
+            //error_reporting(-1);
+            trigger_error('L\'ID doit etre un entier > 0',E_USER_ERROR);
         }
     }
 
@@ -452,13 +464,14 @@ abstract class Manager {
 
 
     public function delete($ID) {
-        if (is_int($ID)) {
+        $ID = intval($ID);
+        if ($ID) {
             $query = $this->db->pdo()->prepare('DELETE FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' = :id');
             $query->bindValue(':id', $ID, \PDO::PARAM_INT);
 
             $query->execute();
         } else {
-            trigger_error('L\'ID doit etre un entier',E_USER_ERROR);
+            trigger_error('L\'ID doit etre un entier > 0',E_USER_ERROR);
         }
     }
 
