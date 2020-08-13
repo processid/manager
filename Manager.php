@@ -284,11 +284,11 @@ abstract class Manager {
 
 
     function bind_query($query, $bind, $type, $value) {
-        if (in_array($type, array('bigint', 'int', 'tinyint', 'smallint', 'mediumint', 'timestamp', 'time', 'year'))) {
+        if (in_array($type, array('bigint', 'int', 'tinyint', 'smallint', 'mediumint', 'time', 'year'))) {
             //echo ($bind . ' : Bind entier : ' . $value . '<br>');
             $query->bindValue($bind, (int) $value, \PDO::PARAM_INT);
         }
-        elseif (in_array($type, array('date', 'datetime', 'char', 'varchar'))) {
+        elseif (in_array($type, array('date', 'datetime', 'timestamp', 'char', 'varchar'))) {
             //echo ($bind . ' : Bind chaine : ' . $value . '<br>');
             $query->bindValue($bind, $value, \PDO::PARAM_STR);
         }
