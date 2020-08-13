@@ -539,7 +539,9 @@ abstract class Manager {
 
                 foreach ($arg['search'] as $ta_search) {
                     if (!array_key_exists($ta_search['table'],$ta_tables)) {
-                        $classe = 'src\manager\\' . ucfirst($ta_search['table']).'Manager';
+                        $table = preg_replace('/ /','',ucwords(preg_replace('/_/',' ',$ta_search['table'])));
+                        $classe = 'src\manager\\' . $table.'Manager';
+                        //$classe = 'src\manager\\' . $ta_search['table'].'Manager';
                         $obj = new $classe($this->db);
                         $obj->recordFields();
                         $ta_tables = $this->fieldsList();
@@ -636,7 +638,9 @@ abstract class Manager {
                             $count = 0;
                             foreach ($arg['sort'] as $ta_sort) {
                                 if (!array_key_exists($ta_sort['table'],$ta_tables)) {
-                                    $classe = 'src\manager\\' . ucfirst($ta_sort['table']).'Manager';
+                                    $table = preg_replace('/ /','',ucwords(preg_replace('/_/',' ',$ta_sort['table'])));
+                                    $classe = 'src\manager\\' . $table.'Manager';
+                                    //$classe = 'src\manager\\' . ucfirst($ta_sort['table']).'Manager';
                                     $obj = new $classe($this->db);
                                     $obj->recordFields();
                                     $ta_tables = $this->fieldsList();
@@ -683,11 +687,11 @@ abstract class Manager {
                     }
                 }
 
-
+                
                 if ($flag_count) {
                     $requete = 'SELECT COUNT(1) FROM (' . addslashes($requete) . ') x';
                 }
-
+                
                 $query = $this->db->pdo()->prepare($requete);
 
                 // Bind
