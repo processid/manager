@@ -419,39 +419,41 @@ abstract class Manager {
 
     public function getList($ta_IDs, $ta_fields='*') {
         if (is_array($ta_IDs)) {
-            $IDs = implode(",", array_map('intval', $ta_IDs));
-
             $return = array();
-
-            $fields = '';
-            if (is_array($ta_fields)) {
-                foreach ($ta_fields as $field) {
-                    if ($fields != '') { $fields .= ','; }
-                    if ($this->fieldExists($field)) {
-                        $fields .= $field;
+            
+            if (count($ta_IDs)) {
+                $IDs = implode(",", array_map('intval', $ta_IDs));
+                
+                $fields = '';
+                if (is_array($ta_fields)) {
+                    foreach ($ta_fields as $field) {
+                        if ($fields != '') { $fields .= ','; }
+                        if ($this->fieldExists($field)) {
+                            $fields .= $field;
+                        } else {
+                            trigger_error('Champ inconnu : ' . $field . ' dans la classe : ' . $this->className,E_USER_ERROR);
+                        }
+                    }
+                } else {
+                    if ($ta_fields == '*' || $this->fieldExists($ta_fields)) {
+                        $fields .= $ta_fields;
                     } else {
-                        trigger_error('Champ inconnu : ' . $field . ' dans la classe : ' . $this->className,E_USER_ERROR);
+                        trigger_error('Champ inconnu : ' . $ta_fields . ' dans la classe : ' . $this->className,E_USER_ERROR);
                     }
                 }
-            } else {
-                if ($ta_fields == '*' || $this->fieldExists($ta_fields)) {
-                    $fields .= $ta_fields;
-                } else {
-                    trigger_error('Champ inconnu : ' . $ta_fields . ' dans la classe : ' . $this->className,E_USER_ERROR);
+
+                $query = $this->db->pdo()->prepare('SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' IN (' . $IDs . ') ORDER BY FIELD(' . $this->tableIdField() . ', ' . $IDs . ')');
+
+                $query->execute();
+
+                while ($results = $query->fetch(\PDO::FETCH_ASSOC)) {
+                    // Champs à déchiffrer
+                    $ta_fields_to_decrypt = array_intersect_key($results,$this->encryptedFields());
+                    foreach ($ta_fields_to_decrypt as $key=>$field_to_decrypt) {
+                        $results[$key] = $this->db->dbCrypt()->decrypt_string($results[$key]);
+                    }
+                    $return[] = new $this->className($results);
                 }
-            }
-
-            $query = $this->db->pdo()->prepare('SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' IN (' . $IDs . ') ORDER BY FIELD(' . $this->tableIdField() . ', ' . $IDs . ')');
-
-            $query->execute();
-
-            while ($results = $query->fetch(\PDO::FETCH_ASSOC)) {
-                // Champs à déchiffrer
-                $ta_fields_to_decrypt = array_intersect_key($results,$this->encryptedFields());
-                foreach ($ta_fields_to_decrypt as $key=>$field_to_decrypt) {
-                    $results[$key] = $this->db->dbCrypt()->decrypt_string($results[$key]);
-                }
-                $return[] = new $this->className($results);
             }
 
             return $return;
