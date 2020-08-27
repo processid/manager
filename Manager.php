@@ -221,7 +221,7 @@ abstract class Manager {
         }
     }
 
-    public function update($object, $ta_fields='*') {
+    public function update($object, $ta_fields='') {
         if (is_array($ta_fields)) {
             $nb_fields = count($ta_fields);
         } else {
