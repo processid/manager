@@ -55,6 +55,7 @@ $this->getList($ta_IDs, $champs);
 // UPDATE
 // Paramètre optionnel : $champs est un champ ex: 'nom' ou un tableau de champs ex: array('nom','tel')
 // Par défaut, si $champs n'est pas fourni, tous les champs sont mis à jour
+// Update retourne le nombre d'enregistrements modifiés
 $this->update($object, [$champs]);
 
 // DELETE
