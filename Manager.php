@@ -221,7 +221,7 @@ abstract class Manager {
         }
     }
 
-    public function update($object, $ta_fields='') {
+    public function update(object $object, $ta_fields='') {
         if (is_array($ta_fields)) {
             $nb_fields = count($ta_fields);
         } else {
@@ -282,6 +282,8 @@ abstract class Manager {
         if (!$query) {
             print_r($this->db->pdo()->errorInfo());
         }
+        
+        return $query->rowCount();
     }
 
 
@@ -311,7 +313,7 @@ abstract class Manager {
 
 
 
-    public function add($object) {
+    public function add(object $object) {
         $requete = 'INSERT INTO ' . $this->tableName() . ' (';
 
         // Boucle sur les champs pour les noms des champs
@@ -363,7 +365,7 @@ abstract class Manager {
 
 
 
-    public function get($ID, $ta_fields='*') {
+    public function get(int $ID, $ta_fields='*') {
         $ID = intval($ID);
         if ($ID) {
             $fields = '';
@@ -417,7 +419,7 @@ abstract class Manager {
 
 
 
-    public function getList($ta_IDs, $ta_fields='*') {
+    public function getList(array $ta_IDs, $ta_fields='*') {
         if (is_array($ta_IDs)) {
             $return = array();
             
@@ -464,7 +466,7 @@ abstract class Manager {
 
 
 
-    public function delete($ID) {
+    public function delete(int $ID) {
         $ID = intval($ID);
         if ($ID) {
             $query = $this->db->pdo()->prepare('DELETE FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' = :id');
@@ -477,7 +479,7 @@ abstract class Manager {
     }
 
 
-    public function search($arg = array()) {
+    public function search(array $arg = array()) {
         $return = array();
         
         // Par défaut, on retourne un tableau d'ID
@@ -744,7 +746,7 @@ abstract class Manager {
         return $return;
     }
 
-    public function encrypt_column($field) {
+    public function encrypt_column(string $field) {
         if (!$this->fieldExists($field)) {
             trigger_error('Le champ ' . $field . ' n\'existe pas dans la table ' . $this->tableName(),E_USER_ERROR);
         }
@@ -785,7 +787,7 @@ abstract class Manager {
         }
     }
 
-    public function decrypt_column($field) {
+    public function decrypt_column(string $field) {
         if (!$this->fieldExists($field)) {
             trigger_error('Le champ ' . $field . ' n\'existe pas dans la table ' . $this->tableName(),E_USER_ERROR);
         }
