@@ -393,17 +393,17 @@ abstract class Manager {
             $requete = 'SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . '=:id';
             $query = $this->db->pdo()->prepare();
             if (!$query) {
-                trigger_error($this->db->pdo()->errorInfo() . ' - Error during prepare() of ' . $requete,E_USER_ERROR);
+                trigger_error($this->db->pdo()->errorInfo() . ' - Error during prepare() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
             }
             
             $query->bindValue(':id', $ID, \PDO::PARAM_INT);
             if (!$query) {
-                trigger_error($this->db->pdo()->errorInfo() . ' - Error during bindValue() of ' . $requete,E_USER_ERROR);
+                trigger_error($this->db->pdo()->errorInfo() . ' - Error during bindValue() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
             }
             
             $query->execute();
             if (!$query) {
-                trigger_error($this->db->pdo()->errorInfo() . ' - Error during execute() of ' . $requete,E_USER_ERROR);
+                trigger_error($this->db->pdo()->errorInfo() . ' - Error during execute() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
             }
 
             if ($results = $query->fetch(\PDO::FETCH_ASSOC)) {
