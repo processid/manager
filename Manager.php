@@ -391,7 +391,7 @@ abstract class Manager {
             }
             
             $requete = 'SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . '=:id';
-            $query = $this->db->pdo()->prepare();
+            $query = $this->db->pdo()->prepare($requete);
             if (!$query) {
                 trigger_error($this->db->pdo()->errorInfo() . ' - Error during prepare() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
             }
