@@ -300,7 +300,7 @@ abstract class Manager {
         elseif (in_array($type, array('tinyblob', 'tinytext', 'blob', 'text', 'mediumblob', 'mediumtext', 'longblob', 'longtext'))) {
             $query->bindValue($bind, $value, \PDO::PARAM_LOB);
         }
-        elseif ($type == 'fload') {
+        elseif ($type == 'float') {
             $query->bindValue($bind, (float) $value, \PDO::PARAM_STR);
         }
         elseif ($type == 'double') {
@@ -309,6 +309,9 @@ abstract class Manager {
         elseif ($type == 'decimal') {
             $query->bindValue($bind, $value, \PDO::PARAM_STR);
         }
+        elseif ($type == 'enum') {
+            $query->bindValue($bind, $value, \PDO::PARAM_STR);
+        }		
         else {
             trigger_error('Champ de type inconnu : ' . $type . ' dans la classe : ' . $this->className(),E_USER_NOTICE);
             $query->bindValue($bind, $value);
