@@ -247,7 +247,7 @@ abstract class Manager {
                 }
             }
         }
-        $requete .= ' WHERE ' . $this->tableIdField() . ' = :ID';
+        $requete .= ' WHERE ' . $this->tableIdField() . ' = :' . $this->tableIdField();
 
         $query = $this->db->pdo()->prepare($requete);
 
@@ -268,7 +268,7 @@ abstract class Manager {
 
         // Ajout du champ ID
         $field = $this->tableIdField();
-        $query->bindValue(':ID', $object->$field(), \PDO::PARAM_INT);
+        $query->bindValue(':'.$this->tableIdField(), $object->$field(), \PDO::PARAM_INT);
 
         // Trouvé tous les champs?
         if ($nb_fields && $count != $nb_fields) {
@@ -300,7 +300,7 @@ abstract class Manager {
         elseif (in_array($type, array('tinyblob', 'tinytext', 'blob', 'text', 'mediumblob', 'mediumtext', 'longblob', 'longtext'))) {
             $query->bindValue($bind, $value, \PDO::PARAM_LOB);
         }
-        elseif ($type == 'float') {
+        elseif ($type == 'fload') {
             $query->bindValue($bind, (float) $value, \PDO::PARAM_STR);
         }
         elseif ($type == 'double') {
@@ -309,9 +309,6 @@ abstract class Manager {
         elseif ($type == 'decimal') {
             $query->bindValue($bind, $value, \PDO::PARAM_STR);
         }
-        elseif ($type == 'enum') {
-            $query->bindValue($bind, $value, \PDO::PARAM_STR);
-        }		
         else {
             trigger_error('Champ de type inconnu : ' . $type . ' dans la classe : ' . $this->className(),E_USER_NOTICE);
             $query->bindValue($bind, $value);
@@ -393,13 +390,13 @@ abstract class Manager {
                 }
             }
             
-            $requete = 'SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . '=:id';
+            $requete = 'SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . '=:'.$this->tableIdField();
             $query = $this->db->pdo()->prepare($requete);
             if (!$query) {
                 trigger_error($this->db->pdo()->errorInfo() . ' - Error during prepare() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
             }
             
-            $query->bindValue(':id', $ID, \PDO::PARAM_INT);
+            $query->bindValue(':'.$this->tableIdField(), $ID, \PDO::PARAM_INT);
             if (!$query) {
                 trigger_error($this->db->pdo()->errorInfo() . ' - Error during bindValue() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
             }
@@ -477,8 +474,8 @@ abstract class Manager {
     public function delete(int $ID) {
         $ID = intval($ID);
         if ($ID) {
-            $query = $this->db->pdo()->prepare('DELETE FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' = :id');
-            $query->bindValue(':id', $ID, \PDO::PARAM_INT);
+            $query = $this->db->pdo()->prepare('DELETE FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' = :'.$this->tableIdField());
+            $query->bindValue(':'.$this->tableIdField(), $ID, \PDO::PARAM_INT);
 
             $query->execute();
         } else {
@@ -773,7 +770,7 @@ abstract class Manager {
 
         $requete = 'UPDATE ' . $this->tableName() . ' SET ';
         $requete .= ' ' . $list_fields[$this->tableName()][$field]['Field'] . '=:value';
-        $requete .= ' WHERE ' . $this->tableIdField() . ' = :ID';
+        $requete .= ' WHERE ' . $this->tableIdField() . ' = :'.$this->tableIdField();
         $query = $this->db->pdo()->prepare($requete);
 
         while ($results = $query2->fetch(\PDO::FETCH_ASSOC)) {
@@ -786,7 +783,7 @@ abstract class Manager {
 
             $query->bindValue(':value', $value, \PDO::PARAM_STR);
 
-            $query->bindValue(':ID', (int) $results[$this->tableIdField()], \PDO::PARAM_INT);
+            $query->bindValue(':'.$this->tableIdField(), (int) $results[$this->tableIdField()], \PDO::PARAM_INT);
 
             $query->execute();
             if (!$query) {
@@ -814,7 +811,7 @@ abstract class Manager {
 
         $requete = 'UPDATE ' . $this->tableName() . ' SET ';
         $requete .= ' ' . $list_fields[$this->tableName()][$field]['Field'] . '=:value';
-        $requete .= ' WHERE ' . $this->tableIdField() . ' = :ID';
+        $requete .= ' WHERE ' . $this->tableIdField() . ' = :'.$this->tableIdField();
         $query = $this->db->pdo()->prepare($requete);
 
         while ($results = $query2->fetch(\PDO::FETCH_ASSOC)) {
@@ -823,7 +820,7 @@ abstract class Manager {
             $value = $this->db->dbCrypt()->decrypt_string($results[$list_fields[$this->tableName()][$field]['Field']]);
             $query->bindValue(':value', $value, \PDO::PARAM_STR);
 
-            $query->bindValue(':ID', (int) $results[$this->tableIdField()], \PDO::PARAM_INT);
+            $query->bindValue(':'.$this->tableIdField(), (int) $results[$this->tableIdField()], \PDO::PARAM_INT);
 
             $query->execute();
             if (!$query) {
