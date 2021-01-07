@@ -71,7 +71,7 @@ SEARCH:
 // 'afterWhere' => <Chaîne à insérer après WHERE (GROUP BY...)>
 // 'start' => <Premier enregistrement retourné>
 // 'limit' => <Nb enregistrements retournés> défaut: tout est retourné (limit doit être > 0 si start est > 0)
-// 'search' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>" < | > | <= | >= | = | in_array | fulltext %fulltext %fulltext% fulltext% like %like %like% like% ", 'value'=><Valeur recherchée>
+// 'search' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>" < | > | <= | >= | = | in_array | fulltext %fulltext %fulltext% fulltext% like %like %like% like% is_null", 'value'=><Valeur recherchée>
 // 'sequence' => <Chaîne de séquencement du WHERE>
 //      Par défaut, toutes les clauses 'search' du WHERE sont séquencées avec des AND, mais il est possible de renseigner la chaine 'sequence' pour personnaliser
 //      Par exemple : '((WHERE1 AND WHERE2) OR (WHERE3 AND WHERE4))' Les clauses Where sont numérotées de 1 à n et sont dans l'ordre du tableau 'search'. Si 'sequence' est fourni, il faut y renseigner toutes les clauses 'search' du WHERE.
@@ -560,7 +560,7 @@ abstract class Manager {
             if (!array_key_exists($ta_search['field'],$ta_tables[$ta_search['table']])) {
                 trigger_error('Le champ : ' . $ta_search['field'] . ' est introuvable dans la table : ' . $ta_search['table'],E_USER_ERROR);
             }
-            if (!in_array($ta_search['operator'],array("<",">","<=",">=","=","in_array","fulltext","%fulltext","%fulltext%","fulltext%","like","%like","%like%","like%"))) {
+            if (!in_array($ta_search['operator'],array("<",">","<=",">=","=","in_array","fulltext","%fulltext","%fulltext%","fulltext%","like","%like","%like%","like%","is_null"))) {
                 trigger_error('Operateur inconnu : ' . $ta_search['operator'],E_USER_ERROR);
             }
             if ($ta_search['operator'] == 'fulltext' || $ta_search['operator'] == '%fulltext' || $ta_search['operator'] == '%fulltext%' || $ta_search['operator'] == 'fulltext%') {
@@ -618,6 +618,8 @@ abstract class Manager {
                     }
                     $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' IN (' . $IDs . ')';
                 }
+            } elseif ($ta_search['operator'] == 'is_null') {
+                $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' IS NULL';
             } else {
                 $ta_bind[$countBind] = array();
                 $ta_bind[$countBind]['table'] = $ta_search['table'];
