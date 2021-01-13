@@ -37,6 +37,8 @@ $this->create_encrypted_fields_sortable();
 
 // CREATE:
 // Le nouvel ID est enregistré dans $this->IDclients()
+// En cas d'erreur, retourne FALSE et renseigne errorTxt
+// En cas de succès, retourne l'ID créé
 $this->add(\src\model\Clients $obj);
 
 // READ:
@@ -56,6 +58,7 @@ $this->getList($ta_IDs, $champs);
 // Paramètre optionnel : $champs est un champ ex: 'nom' ou un tableau de champs ex: array('nom','tel')
 // Par défaut, si $champs n'est pas fourni, tous les champs sont mis à jour
 // Update retourne le nombre d'enregistrements modifiés
+// En cas d'erreur, retourne FALSE et renseigne errorTxt
 $this->update($object, [$champs]);
 
 // DELETE
@@ -71,7 +74,7 @@ SEARCH:
 // 'afterWhere' => <Chaîne à insérer après WHERE (GROUP BY...)>
 // 'start' => <Premier enregistrement retourné>
 // 'limit' => <Nb enregistrements retournés> défaut: tout est retourné (limit doit être > 0 si start est > 0)
-// 'search' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>" < | > | <= | >= | = | in_array | fulltext %fulltext %fulltext% fulltext% like %like %like% like% is_null", 'value'=><Valeur recherchée>
+// 'search' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>" < | > | <= | >= | = | in_array | fulltext | %fulltext | %fulltext% | fulltext% | like | %like | %like% | like% | is_null ", 'value'=><Valeur recherchée>
 // 'sequence' => <Chaîne de séquencement du WHERE>
 //      Par défaut, toutes les clauses 'search' du WHERE sont séquencées avec des AND, mais il est possible de renseigner la chaine 'sequence' pour personnaliser
 //      Par exemple : '((WHERE1 AND WHERE2) OR (WHERE3 AND WHERE4))' Les clauses Where sont numérotées de 1 à n et sont dans l'ordre du tableau 'search'. Si 'sequence' est fourni, il faut y renseigner toutes les clauses 'search' du WHERE.
@@ -96,6 +99,7 @@ abstract class Manager {
     protected $tableName;
     protected $tableIdField;
     protected $className; // Nom de la classe des objets retournés par get() et getList()
+    protected $errorTxt;
     private $_nbResults;
     private $_encryptedFields = array();
     private $_encryptedFieldsSortable = array();
@@ -111,6 +115,7 @@ abstract class Manager {
     function tableName() { return $this->tableName; }
     function tableIdField() { return $this->tableIdField; }
     function className() { return $this->className; }
+    function errorTxt() { return $this->errorTxt; }
     function encryptedFields() { return $this->_encryptedFields; }
     function encryptedFieldsSortable() { return $this->_encryptedFieldsSortable; }
     function encryptedFieldsSortableCreate() { return $this->_encryptedFieldsSortableCreate; }
@@ -129,6 +134,10 @@ abstract class Manager {
 
     function setClassName($className) {
         $this->className = $className;
+    }
+
+    function setErrorTxt($errorTxt) {
+        $this->errorTxt = $errorTxt;
     }
 
     function setTableIdField($tableIdField) {
@@ -281,7 +290,8 @@ abstract class Manager {
 
         $query->execute();
         if (!$query) {
-            print_r($this->db->pdo()->errorInfo());
+            $this->setErrorTxt($this->db->pdo()->errorInfo());
+            return false;
         }
         
         return $query->rowCount();
@@ -360,11 +370,14 @@ abstract class Manager {
 
         $query->execute();
         if (!$query) {
-            print_r($this->db->pdo()->errorInfo());
+            $this->setErrorTxt($this->db->pdo()->errorInfo());
+            return false;
         }
 
         $setterID = 'set' . ucfirst($this->tableIdField);
-        $object->$setterID($this->db->pdo()->lastInsertId());
+        $lastInsertId = $this->db->pdo()->lastInsertId();
+        $object->$setterID($lastInsertId);
+        return $lastInsertId;
     }
 
 
