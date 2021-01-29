@@ -91,9 +91,9 @@ $arg['sort'][] = array('table'=>'clients','field'=>'nom','reverse'=>false);
 search($arg);
 
 Débogage:
-Il est possible d'activer ou de désactiver le débogage avec $this->setDebug(TURE | FALSE);
+Il est possible d'activer ou de désactiver le débogage avec $this->setDebug(TRUE | FALSE);
 Quand il est actif, $this->debugTxt() contient la dernière requête et les éventuelles valeurs des binds
-Le buffer de déboggage est vidé lors de sa lecture : $this->debugTxt(), ou lors de son initialisation : $this->setDebug()
+Le buffer de déboggage est vidé lors de sa lecture : $this->debugTxt(), ou lors de son initialisation : $this->setDebug(TRUE | FALSE)
 
 */
 namespace processid\manager;
