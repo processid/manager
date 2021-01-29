@@ -90,6 +90,11 @@ $arg['fields'][] = array('table'=>'clients','field'=>'nom');
 $arg['sort'][] = array('table'=>'clients','field'=>'nom','reverse'=>false);
 search($arg);
 
+Débogage:
+Il est possible d'activer ou de désactiver le débogage avec $this->setDebug(TURE | FALSE);
+Quand il est actif, $this->debug() contient la dernière requête et les éventuelles valeurs des binds
+Le buffer de déboggage est vidé lors de sa lecture : $this->debug(), ou lors de son initialisation : $this->setDebug()
+
 */
 namespace processid\manager;
 
@@ -100,6 +105,8 @@ abstract class Manager {
     protected $tableIdField;
     protected $className; // Nom de la classe des objets retournés par get() et getList()
     protected $errorTxt;
+    protected $debug = false;
+    protected $debugTxt = '';
     private $_nbResults;
     private $_encryptedFields = array();
     private $_encryptedFieldsSortable = array();
@@ -120,7 +127,27 @@ abstract class Manager {
     function encryptedFieldsSortable() { return $this->_encryptedFieldsSortable; }
     function encryptedFieldsSortableCreate() { return $this->_encryptedFieldsSortableCreate; }
     function nbResults() { return $this->_nbResults; }
-
+    
+    public function debug() { return $this->debug; }
+    
+    public function debugTxt() {
+        $texte = $this->debugTxt;
+        $this->debugTxt = '';
+        return $texte;
+    }
+    
+    public function setDebug($debug) {
+        if (is_bool($debug)) {
+            $this->debug = $debug;
+            $this->debugTxt = '';
+        }
+    }
+    
+    private function setDebugTxt($texte) {
+        if (strlen($this->debugTxt)) { $this->debugTxt .= "\n"; }
+        $this->debugTxt .= $texte;
+    }
+    
     function fieldsList() {
         if (!isset(self::$_fieldsList[$this->tableName()]) || !is_array(self::$_fieldsList[$this->tableName()])) {
             $this->recordFields();
@@ -257,7 +284,11 @@ abstract class Manager {
             }
         }
         $requete .= ' WHERE ' . $this->tableIdField() . ' = :' . $this->tableIdField();
-
+        
+        if ($this->debug()) {
+            $this->setDebugTxt($requete);
+        }
+        
         $query = $this->db->pdo()->prepare($requete);
 
         // Boucle sur les champs pour les bind
@@ -269,7 +300,11 @@ abstract class Manager {
                     } else {
                         $value = $object->{$infos_field['Field']}();
                     }
-
+                    
+                    if ($this->debug()) {
+                        $this->setDebugTxt('bind:' . $infos_field['Field'] . ' = ' . $value . ' (' . $infos_field['Type'] . ')');
+                    }
+                    
                     $this->bind_query($query, ':' . $infos_field['Field'], $infos_field['Type'], $value);
                 }
             }
@@ -277,6 +312,9 @@ abstract class Manager {
 
         // Ajout du champ ID
         $field = $this->tableIdField();
+        if ($this->debug()) {
+            $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $object->$field() . ' (INTEGER)');
+        }
         $query->bindValue(':'.$this->tableIdField(), $object->$field(), \PDO::PARAM_INT);
 
         // Trouvé tous les champs?
@@ -351,7 +389,11 @@ abstract class Manager {
             }
         }
         $requete .= ')';
-
+        
+        if ($this->debug()) {
+            $this->setDebugTxt($requete);
+        }
+        
         $query = $this->db->pdo()->prepare($requete);
 
         // Boucle sur les champs pour les bind
@@ -362,7 +404,11 @@ abstract class Manager {
                 } else {
                     $value = $object->{$infos_field['Field']}();
                 }
-
+                
+                if ($this->debug()) {
+                    $this->setDebugTxt('bind:' . $infos_field['Field'] . ' = ' . $value . ' (' . $infos_field['Type'] . ')');
+                }
+                
                 $this->bind_query($query, ':' . $infos_field['Field'], $infos_field['Type'], $value);
 
             }
@@ -404,11 +450,17 @@ abstract class Manager {
             }
             
             $requete = 'SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . '=:'.$this->tableIdField();
+            if ($this->debug()) {
+                $this->setDebugTxt($requete);
+            }
             $query = $this->db->pdo()->prepare($requete);
             if (!$query) {
                 trigger_error($this->db->pdo()->errorInfo() . ' - Error during prepare() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
             }
             
+            if ($this->debug()) {
+                $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $ID . ' (INTEGER)');
+            }
             $query->bindValue(':'.$this->tableIdField(), $ID, \PDO::PARAM_INT);
             if (!$query) {
                 trigger_error($this->db->pdo()->errorInfo() . ' - Error during bindValue() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
@@ -461,8 +513,12 @@ abstract class Manager {
                         trigger_error('Champ inconnu : ' . $ta_fields . ' dans la classe : ' . $this->className,E_USER_ERROR);
                     }
                 }
-
-                $query = $this->db->pdo()->prepare('SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' IN (' . $IDs . ') ORDER BY FIELD(' . $this->tableIdField() . ', ' . $IDs . ')');
+                
+                $requete = 'SELECT ' . $fields . ' FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' IN (' . $IDs . ') ORDER BY FIELD(' . $this->tableIdField() . ', ' . $IDs . ')';
+                if ($this->debug()) {
+                    $this->setDebugTxt($requete);
+                }
+                $query = $this->db->pdo()->prepare($requete);
 
                 $query->execute();
 
@@ -487,7 +543,14 @@ abstract class Manager {
     public function delete(int $ID) {
         $ID = intval($ID);
         if ($ID) {
-            $query = $this->db->pdo()->prepare('DELETE FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' = :'.$this->tableIdField());
+            $requete = 'DELETE FROM ' . $this->tableName() . ' WHERE ' . $this->tableIdField() . ' = :'.$this->tableIdField();
+            if ($this->debug()) {
+                $this->setDebugTxt($requete);
+            }
+            $query = $this->db->pdo()->prepare($requete);
+            if ($this->debug()) {
+                $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $ID . ' (INTEGER');
+            }
             $query->bindValue(':'.$this->tableIdField(), $ID, \PDO::PARAM_INT);
 
             $query->execute();
@@ -731,12 +794,17 @@ abstract class Manager {
             $requete = 'SELECT COUNT(1) FROM (' . addslashes($requete) . ') x';
         }
         
+        if ($this->debug()) {
+            $this->setDebugTxt($requete);
+        }
         $query = $this->db->pdo()->prepare($requete);
 
         // Bind
         foreach ($ta_bind as $key=>$infos_bind) {
             $type = $ta_tables[$infos_bind['table']][$infos_bind['field']]['Type'];
-
+            if ($this->debug()) {
+                $this->setDebugTxt('bind:' . $key . ' = ' . $infos_bind['value'] . ' (' . $type . ')');
+            }
             $this->bind_query($query, ':bind' . $key, $type, $infos_bind['value']);
         }
         
@@ -789,8 +857,6 @@ abstract class Manager {
         $query = $this->db->pdo()->prepare($requete);
 
         while ($results = $query2->fetch(\PDO::FETCH_ASSOC)) {
-
-            //$value = $this->crypt->encrypt_string($results[$list_fields[$field]['Field']]);
             $value = $this->db->dbCrypt()->encrypt_string($results[$list_fields[$this->tableName()][$field]['Field']]);
             if (strlen($value) > $list_fields[$this->tableName()][$field]['CharOctetLength']) {
                 trigger_error('Le champ ' . $field . ' est trop petit, la chaine sera tronquee : ' . strlen($value) . ' > ' . $list_fields[$this->tableName()][$field]['CharOctetLength'],E_USER_NOTICE);
@@ -830,8 +896,6 @@ abstract class Manager {
         $query = $this->db->pdo()->prepare($requete);
 
         while ($results = $query2->fetch(\PDO::FETCH_ASSOC)) {
-
-            //$value = $this->crypt->decrypt_string($results[$list_fields[$field]['Field']]);
             $value = $this->db->dbCrypt()->decrypt_string($results[$list_fields[$this->tableName()][$field]['Field']]);
             $query->bindValue(':value', $value, \PDO::PARAM_STR);
 
