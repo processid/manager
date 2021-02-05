@@ -39,7 +39,8 @@ $this->create_encrypted_fields_sortable();
 // Le nouvel ID est enregistré dans $this->IDclients()
 // En cas d'erreur, retourne FALSE et renseigne errorTxt
 // En cas de succès, retourne l'ID créé
-$this->add(\src\model\Clients $obj);
+// Si on positionne $ignore à TRUE, la requête devient "INSERT IGNORE" et 0 est retourné si la requête n'a pas inséré d'enregistrement
+$this->add(\src\model\Clients $obj, [$ignore = FALSE]);
 
 // READ:
 // get() retourne une instance de \src\model\Clients
@@ -93,7 +94,7 @@ search($arg);
 Débogage:
 Il est possible d'activer ou de désactiver le débogage avec $this->setDebug(TRUE | FALSE);
 Quand il est actif, $this->debugTxt() contient la dernière requête et les éventuelles valeurs des binds
-Le buffer de déboggage est vidé lors de sa lecture : $this->debugTxt(), ou lors de son initialisation : $this->setDebug(TRUE | FALSE)
+Le buffer de débogage est vidé lors de sa lecture : $this->debugTxt(), ou lors de son initialisation : $this->setDebug(TRUE | FALSE)
 
 */
 namespace processid\manager;
@@ -365,8 +366,13 @@ abstract class Manager {
 
 
 
-    public function add(object $object) {
-        $requete = 'INSERT INTO ' . $this->tableName() . ' (';
+    public function add(object $object, $ignore = false) {
+        if ($ignore) {
+            $requete = 'INSERT IGNORE INTO ';
+        } else {
+            $requete = 'INSERT INTO ';
+        }
+        $requete .= $this->tableName() . ' (';
 
         // Boucle sur les champs pour les noms des champs
         $count = 0;
@@ -419,7 +425,11 @@ abstract class Manager {
             $this->setErrorTxt($this->db->pdo()->errorInfo());
             return false;
         }
-
+        
+        if ($ignore && !$query->rowCount()) {
+            return 0;
+        }
+        
         $setterID = 'set' . ucfirst($this->tableIdField);
         $lastInsertId = $this->db->pdo()->lastInsertId();
         $object->$setterID($lastInsertId);
