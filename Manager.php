@@ -431,7 +431,7 @@ abstract class Manager {
         }
         
         $setterID = 'set' . ucfirst($this->tableIdField);
-        $lastInsertId = $this->db->pdo()->lastInsertId();
+        $lastInsertId = intval($this->db->pdo()->lastInsertId());
         $object->$setterID($lastInsertId);
         return $lastInsertId;
     }

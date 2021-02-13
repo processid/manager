@@ -5,14 +5,14 @@
     // -- Instanciation --
     // -------------------
     $arg = array (
-    'type'=>'mysql'
-    ,'host'=>$db_host
-    ,'database'=>$db_base
-    ,'user'=>$db_user
-    ,'pass'=>$db_pass
-    ,'key_aes256'=><Clef générée avec \ProcessID\Encrypt\EncryptOpenSSL::generate_key_aes256();>
-    ,'key_hash512'=><Clef générée avec \ProcessID\Encrypt\EncryptOpenSSL::generate_key_hash512();>
-    ,'method'=>'aes-256-cbc'
+        'type'=>'mysql'
+        ,'host'=>$db_host
+        ,'database'=>$db_base
+        ,'user'=>$db_user
+        ,'pass'=>$db_pass
+        ,'key_aes256'=><Clef générée avec \ProcessID\Encrypt\EncryptOpenSSL::generate_key_aes256();>
+        ,'key_hash512'=><Clef générée avec \ProcessID\Encrypt\EncryptOpenSSL::generate_key_hash512();>
+        ,'method'=>'aes-256-cbc'
     );
     $dbConnect = new DbConnect($arg);
 
@@ -21,7 +21,7 @@
 
     // DbConnect() fournit:
     // - Une instance de PDO : $this->pdo()
-    // - Une instance de \ProcessID\Chiffrement\ChiffrementOpenSSL : $this->dbCrypt() qui apporte chiffre_chaine() et dechiffre_chaine() pré-configurés avec key_aes256 et key_hash512
+    // - Une instance de \processid\encrypt\EncryptOpenSSL : $this->dbCrypt() qui apporte encrypt_string() et decrypt_string() pré-configurés avec key_aes256 et key_hash512
 
     */   
     namespace processid\manager;
@@ -129,6 +129,7 @@
 
                 $this->_pdo = new PDO($dsn, $this->_user, $this->_pass, $options);
                 $this->_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
+                $this->_pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
 
             } catch (Exception $e) {
                 die('Erreur : ' . $e->getMessage());
