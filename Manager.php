@@ -75,7 +75,7 @@ SEARCH:
 // 'afterWhere' => <Chaîne à insérer après WHERE (GROUP BY...)>
 // 'start' => <Premier enregistrement retourné>
 // 'limit' => <Nb enregistrements retournés> défaut: tout est retourné (limit doit être > 0 si start est > 0)
-// 'search' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>" < | > | <= | >= | = | in_array | fulltext | %fulltext | %fulltext% | fulltext% | like | %like | %like% | like% | is_null ", 'value'=><Valeur recherchée>
+// 'search' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>" < | > | <= | >= | = | != | in_array | not_in_array | fulltext | %fulltext | %fulltext% | fulltext% | like | not_like | %like | %not_like | %like% | %not_like% | like% | not_like% | is_null | is_not_null ", 'value'=><Valeur recherchée>
 // 'sequence' => <Chaîne de séquencement du WHERE>
 //      Par défaut, toutes les clauses 'search' du WHERE sont séquencées avec des AND, mais il est possible de renseigner la chaine 'sequence' pour personnaliser
 //      Par exemple : '((WHERE1 AND WHERE2) OR (WHERE3 AND WHERE4))' Les clauses Where sont numérotées de 1 à n et sont dans l'ordre du tableau 'search'. Si 'sequence' est fourni, il faut y renseigner toutes les clauses 'search' du WHERE.
@@ -646,10 +646,10 @@ abstract class Manager {
             if (!array_key_exists($ta_search['field'],$ta_tables[$ta_search['table']])) {
                 trigger_error('Le champ : ' . $ta_search['field'] . ' est introuvable dans la table : ' . $ta_search['table'],E_USER_ERROR);
             }
-            if (!in_array($ta_search['operator'],array("<",">","<=",">=","=","in_array","fulltext","%fulltext","%fulltext%","fulltext%","like","%like","%like%","like%","is_null"))) {
+            if (!in_array($ta_search['operator'],array('<','>','<=','>=','=','!=','in_array','not_in_array','fulltext','%fulltext','%fulltext%','fulltext%','like','not_like','%like','%not_like','%like%','%not_like%','like%','not_like%','is_null','is_not_null'))) {
                 trigger_error('Operateur inconnu : ' . $ta_search['operator'],E_USER_ERROR);
             }
-            if ($ta_search['operator'] == 'fulltext' || $ta_search['operator'] == '%fulltext' || $ta_search['operator'] == '%fulltext%' || $ta_search['operator'] == 'fulltext%') {
+            if (in_array($ta_search['operator'],array('fulltext','%fulltext','%fulltext%','fulltext%'))) {
                 if (preg_match('#^id[0-9]{1,}$#', $ta_search['value'])) {
                     $ta_bind[$countBind] = array();
                     $ta_bind[$countBind]['table'] = $ta_search['table'];
@@ -674,13 +674,13 @@ abstract class Manager {
                         elseif ($ta_search['operator'] == '%fulltext%') { $ta_bind[$countBind]['value'] = '%' . $mot . '%'; }
                         elseif ($ta_search['operator'] == 'fulltext%') { $ta_bind[$countBind]['value'] = $mot . '%'; }
 
-                        $condition_tmp .= $ta_search['table'] . '.' . $ta_search['field'] . ' like :bind' . $countBind++;
+                        $condition_tmp .= $ta_search['table'] . '.' . $ta_search['field'] . ' LIKE :bind' . $countBind++;
                         $countMots++;
                     }
                     $condition_tmp .= ' )';
                     $ta_where[] = $condition_tmp;
                 }
-            } elseif ($ta_search['operator'] == 'like' || $ta_search['operator'] == '%like' || $ta_search['operator'] == '%like%' || $ta_search['operator'] == 'like%') {
+            } elseif (in_array($ta_search['operator'],array('like','not_like','%like','%not_like','%like%','%not_like%','like%','not_like%'))) {
                 $ta_bind[$countBind] = array();
                 $ta_bind[$countBind]['table'] = $ta_search['table'];
                 $ta_bind[$countBind]['field'] = $ta_search['field'];
@@ -688,8 +688,12 @@ abstract class Manager {
                 elseif ($ta_search['operator'] == '%like') { $ta_bind[$countBind]['value'] = '%' . $ta_search['value']; }
                 elseif ($ta_search['operator'] == '%like%') { $ta_bind[$countBind]['value'] = '%' . $ta_search['value'] . '%'; }
                 elseif ($ta_search['operator'] == 'like%') { $ta_bind[$countBind]['value'] = $ta_search['value'] . '%'; }
-                $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' like :bind' . $countBind++;
-            } elseif ($ta_search['operator'] == 'in_array') {
+                $not = '';
+                if (in_array($ta_search['operator'],array('not_like','%not_like','%not_like%','not_like%'))) {
+                    $not = ' NOT';
+                }
+                $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . $not . ' LIKE :bind' . $countBind++;
+            } elseif (in_array($ta_search['operator'],array('in_array','not_in_array'))) {
                 if (is_array($ta_search['value'])) {
                     $IDs = '';
                     if (count($ta_search['value'])) {
@@ -702,16 +706,22 @@ abstract class Manager {
                         }
                         $IDs = rtrim($IDs,",");
                     }
-                    $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' IN (' . $IDs . ')';
+                    $not = '';
+                    if ($ta_search['operator'] == 'not_in_array') {
+                        $not = ' NOT';
+                    }
+                    $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . $not . ' IN (' . $IDs . ')';
                 }
             } elseif ($ta_search['operator'] == 'is_null') {
                 $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' IS NULL';
+            } elseif ($ta_search['operator'] == 'is_not_null') {
+                $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' IS NOT NULL';
             } else {
                 $ta_bind[$countBind] = array();
                 $ta_bind[$countBind]['table'] = $ta_search['table'];
                 $ta_bind[$countBind]['field'] = $ta_search['field'];
                 $ta_bind[$countBind]['value'] = $ta_search['value'];
-                $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' ' . $ta_search['operator'] . ':bind' . $countBind++;
+                $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' ' . $ta_search['operator'] . ' :bind' . $countBind++;
             }
         }
         
