@@ -229,10 +229,18 @@ abstract class Manager {
         $requete .= ' AND table_schema=DATABASE()';
 
         $query = $this->db->pdo()->prepare($requete);
+        if ($query === false) {
+            trigger_error('Erreur dans recordFields():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete,E_USER_ERROR);
+            return false;
+        }
 
         $query->bindValue(':tableName', $this->tableName(), \PDO::PARAM_STR);
 
         $query->execute();
+        if ($query === false) {
+            trigger_error('Erreur dans recordFields():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete,E_USER_ERROR);
+            return false;
+        }
 
         self::$_fieldsList[$this->tableName()] = array();
 
@@ -291,6 +299,10 @@ abstract class Manager {
         }
         
         $query = $this->db->pdo()->prepare($requete);
+        if ($query === false) {
+            $this->setErrorTxt('Erreur dans update():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+            return false;
+        }
 
         // Boucle sur les champs pour les bind
         foreach ($ta_tables[$this->tableName()] as $infos_field) {
@@ -328,8 +340,8 @@ abstract class Manager {
         }
 
         $query->execute();
-        if (!$query) {
-            $this->setErrorTxt($this->db->pdo()->errorInfo());
+        if ($query === false) {
+            $this->setErrorTxt('Erreur dans update():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
             return false;
         }
         
@@ -401,6 +413,10 @@ abstract class Manager {
         }
         
         $query = $this->db->pdo()->prepare($requete);
+        if ($query === false) {
+            $this->setErrorTxt('Erreur dans add():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+            return false;
+        }
 
         // Boucle sur les champs pour les bind
         foreach ($ta_tables[$this->tableName()] as $infos_field) {
@@ -421,8 +437,8 @@ abstract class Manager {
         }
 
         $query->execute();
-        if (!$query) {
-            $this->setErrorTxt($this->db->pdo()->errorInfo());
+        if ($query === false) {
+            $this->setErrorTxt('Erreur dans add():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
             return false;
         }
         
@@ -464,21 +480,23 @@ abstract class Manager {
                 $this->setDebugTxt($requete);
             }
             $query = $this->db->pdo()->prepare($requete);
-            if (!$query) {
-                trigger_error($this->db->pdo()->errorInfo() . ' - Error during prepare() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
+            if ($query === false) {
+                $this->setErrorTxt('Erreur dans get():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete . ' - :id=' . $ID);
+                return false;
             }
             
             if ($this->debug()) {
                 $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $ID . ' (INTEGER)');
             }
             $query->bindValue(':'.$this->tableIdField(), $ID, \PDO::PARAM_INT);
-            if (!$query) {
+            if ($query === false) {
                 trigger_error($this->db->pdo()->errorInfo() . ' - Error during bindValue() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
             }
             
             $query->execute();
-            if (!$query) {
-                trigger_error($this->db->pdo()->errorInfo() . ' - Error during execute() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
+            if ($query === false) {
+                $this->setErrorTxt('Erreur dans get():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete . ' - :id=' . $ID);
+                return false;
             }
 
             if ($results = $query->fetch(\PDO::FETCH_ASSOC)) {
@@ -529,8 +547,16 @@ abstract class Manager {
                     $this->setDebugTxt($requete);
                 }
                 $query = $this->db->pdo()->prepare($requete);
+                if ($query === false) {
+                    $this->setErrorTxt('Erreur dans getList():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+                    return false;
+                }
 
                 $query->execute();
+                if ($query === false) {
+                    $this->setErrorTxt('Erreur dans getList():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+                    return false;
+                }
 
                 while ($results = $query->fetch(\PDO::FETCH_ASSOC)) {
                     // Champs à déchiffrer
@@ -558,12 +584,21 @@ abstract class Manager {
                 $this->setDebugTxt($requete);
             }
             $query = $this->db->pdo()->prepare($requete);
+            if ($query === false) {
+                $this->setErrorTxt('Erreur dans delete():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete . ' - ID:'.$ID);
+                return false;
+            }
+            
             if ($this->debug()) {
                 $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $ID . ' (INTEGER');
             }
             $query->bindValue(':'.$this->tableIdField(), $ID, \PDO::PARAM_INT);
 
             $query->execute();
+            if ($query === false) {
+                $this->setErrorTxt('Erreur dans delete():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete . ' - ID:'.$ID);
+                return false;
+            }
         } else {
             trigger_error('L\'ID doit etre un entier > 0',E_USER_ERROR);
         }
@@ -818,6 +853,10 @@ abstract class Manager {
             $this->setDebugTxt($requete);
         }
         $query = $this->db->pdo()->prepare($requete);
+        if ($query === false) {
+            $this->setErrorTxt('Erreur dans search():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+            return false;
+        }
 
         // Bind
         foreach ($ta_bind as $key=>$infos_bind) {
@@ -829,6 +868,10 @@ abstract class Manager {
         }
         
         $query->execute();
+        if ($query === false) {
+            $this->setErrorTxt('Erreur dans search():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+            return false;
+        }
 
         if ($flag_count) {
             $results = $query->fetchColumn();
