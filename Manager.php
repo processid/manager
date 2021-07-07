@@ -358,10 +358,13 @@ abstract class Manager {
         elseif (in_array($type, array('date', 'datetime', 'timestamp', 'char', 'varchar'))) {
             $query->bindValue($bind, $value, \PDO::PARAM_STR);
         }
+        elseif ($type == 'enum') {
+            $query->bindValue($bind, $value, \PDO::PARAM_STR);
+        }
         elseif (in_array($type, array('tinyblob', 'tinytext', 'blob', 'text', 'mediumblob', 'mediumtext', 'longblob', 'longtext'))) {
             $query->bindValue($bind, $value, \PDO::PARAM_LOB);
         }
-        elseif ($type == 'fload') {
+        elseif ($type == 'float') {
             $query->bindValue($bind, (float) $value, \PDO::PARAM_STR);
         }
         elseif ($type == 'double') {
