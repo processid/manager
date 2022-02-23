@@ -750,7 +750,7 @@ abstract class Manager {
                     }
                     if (!strlen($IDs)) {
                         $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' IS NULL';
-                        trigger_error('Attention, la valeur pour in_array ne devrait pas être vide : '.$ta_search['table'] . '.' . $ta_search['field'],E_USER_ERROR);
+                        trigger_error('Attention, la valeur pour in_array ne devrait pas être vide : '.$ta_search['table'] . '.' . $ta_search['field'],E_USER_NOTICE);
                     } else {
                         $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . $not . ' IN (' . $IDs . ')';
                     }
