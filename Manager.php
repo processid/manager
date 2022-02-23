@@ -748,7 +748,11 @@ abstract class Manager {
                     if ($ta_search['operator'] == 'not_in_array') {
                         $not = ' NOT';
                     }
-                    $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . $not . ' IN (' . $IDs . ')';
+                    if (!strlen($IDs)) {
+                        $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' IS NULL';
+                    } else {
+                        $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . $not . ' IN (' . $IDs . ')';
+                    }
                 }
             } elseif ($ta_search['operator'] == 'is_null') {
                 $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' IS NULL';
