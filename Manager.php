@@ -230,7 +230,7 @@ abstract class Manager {
 
         $query = $this->db->pdo()->prepare($requete);
         if ($query === false) {
-            trigger_error('Erreur dans recordFields():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete,E_USER_ERROR);
+            trigger_error('Erreur dans recordFields():prepare() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete,E_USER_ERROR);
             return false;
         }
 
@@ -238,7 +238,7 @@ abstract class Manager {
 
         $query->execute();
         if ($query === false) {
-            trigger_error('Erreur dans recordFields():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete,E_USER_ERROR);
+            trigger_error('Erreur dans recordFields():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete,E_USER_ERROR);
             return false;
         }
 
@@ -300,7 +300,7 @@ abstract class Manager {
         
         $query = $this->db->pdo()->prepare($requete);
         if ($query === false) {
-            $this->setErrorTxt('Erreur dans update():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+            $this->setErrorTxt('Erreur dans update():prepare() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete);
             return false;
         }
 
@@ -341,7 +341,7 @@ abstract class Manager {
 
         $query->execute();
         if ($query === false) {
-            $this->setErrorTxt('Erreur dans update():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+            $this->setErrorTxt('Erreur dans update():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete);
             return false;
         }
         
@@ -417,7 +417,7 @@ abstract class Manager {
         
         $query = $this->db->pdo()->prepare($requete);
         if ($query === false) {
-            $this->setErrorTxt('Erreur dans add():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+            $this->setErrorTxt('Erreur dans add():prepare() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete);
             return false;
         }
 
@@ -441,7 +441,7 @@ abstract class Manager {
 
         $query->execute();
         if ($query === false) {
-            $this->setErrorTxt('Erreur dans add():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+            $this->setErrorTxt('Erreur dans add():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete);
             return false;
         }
         
@@ -484,7 +484,7 @@ abstract class Manager {
             }
             $query = $this->db->pdo()->prepare($requete);
             if ($query === false) {
-                $this->setErrorTxt('Erreur dans get():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete . ' - :id=' . $ID);
+                $this->setErrorTxt('Erreur dans get():prepare() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete . ' - :id=' . $ID);
                 return false;
             }
             
@@ -493,12 +493,12 @@ abstract class Manager {
             }
             $query->bindValue(':'.$this->tableIdField(), $ID, \PDO::PARAM_INT);
             if ($query === false) {
-                trigger_error($this->db->pdo()->errorInfo() . ' - Error during bindValue() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
+                trigger_error(implode(' - ', $this->db->pdo()->errorInfo()) . ' - Error during bindValue() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
             }
             
             $query->execute();
             if ($query === false) {
-                $this->setErrorTxt('Erreur dans get():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete . ' - :id=' . $ID);
+                $this->setErrorTxt('Erreur dans get():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete . ' - :id=' . $ID);
                 return false;
             }
 
@@ -551,13 +551,13 @@ abstract class Manager {
                 }
                 $query = $this->db->pdo()->prepare($requete);
                 if ($query === false) {
-                    $this->setErrorTxt('Erreur dans getList():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+                    $this->setErrorTxt('Erreur dans getList():prepare() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete);
                     return false;
                 }
 
                 $query->execute();
                 if ($query === false) {
-                    $this->setErrorTxt('Erreur dans getList():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+                    $this->setErrorTxt('Erreur dans getList():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete);
                     return false;
                 }
 
@@ -588,7 +588,7 @@ abstract class Manager {
             }
             $query = $this->db->pdo()->prepare($requete);
             if ($query === false) {
-                $this->setErrorTxt('Erreur dans delete():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete . ' - ID:'.$ID);
+                $this->setErrorTxt('Erreur dans delete():prepare() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete . ' - ID:'.$ID);
                 return false;
             }
             
@@ -599,7 +599,7 @@ abstract class Manager {
 
             $query->execute();
             if ($query === false) {
-                $this->setErrorTxt('Erreur dans delete():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete . ' - ID:'.$ID);
+                $this->setErrorTxt('Erreur dans delete():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete . ' - ID:'.$ID);
                 return false;
             }
         } else {
@@ -857,7 +857,7 @@ abstract class Manager {
         }
         $query = $this->db->pdo()->prepare($requete);
         if ($query === false) {
-            $this->setErrorTxt('Erreur dans search():prepare() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+            $this->setErrorTxt('Erreur dans search():prepare() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete);
             return false;
         }
 
@@ -872,7 +872,7 @@ abstract class Manager {
         
         $query->execute();
         if ($query === false) {
-            $this->setErrorTxt('Erreur dans search():execute() - ' . $this->db->pdo()->errorInfo() . ' - ' . $requete);
+            $this->setErrorTxt('Erreur dans search():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete);
             return false;
         }
 
