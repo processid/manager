@@ -636,7 +636,8 @@ abstract class Manager {
                     $fields .= ',';
                 }
                 if (!array_key_exists($ta_field['table'],$ta_tables)) {
-                    $classe = 'src\manager\\' . ucfirst($ta_field['table']).'Manager';
+                    $table = preg_replace('/ /','',ucwords(preg_replace('/_/',' ',$ta_field['table'])));
+                    $classe = 'src\manager\\' . $table.'Manager';
                     $obj = new $classe($this->db);
                     $obj->recordFields();
                     $ta_tables = $this->fieldsList();
