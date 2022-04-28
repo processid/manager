@@ -781,7 +781,7 @@ abstract class Manager {
                 }
                 foreach ($ta_where as $where) {
                     $count++;
-                    $chaine_where = str_replace('WHERE'.$count, $where, $chaine_where);
+                    $chaine_where = preg_replace('#WHERE' . $count . '\b#', $where, $chaine_where);
                 }
                 $requete .= $chaine_where;
             }
