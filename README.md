@@ -5,12 +5,12 @@ Système de gestion et de connexion de base de données.
 
 # Installation
 
-Ajoutez à votre fichier `composer.json` dans la section `require`, `"processid/manager": "1.8.0"`. Puis lancez la commande `composer update`.
+Ajoutez à votre fichier `composer.json` dans la section `require`, `"processid/manager": "1.8.2"`. Puis lancez la commande `composer update`.
 Voici un exemple de fichier `composer.json` avec uniquement l'usage du Manager.
 ```json
 {
     "require": {
-        "processid/manager": "1.8.0"
+        "processid/manager": "1.8.2"
     }
 }
 ```
@@ -115,7 +115,7 @@ Si `fields[]` est vide, search retourne un tableau d'IDs qu'il est possible de p
 - `limit` : Nombre d'enregistrements retournés. Si `start `> 0, alors `limit` > 0. `limit` = 0 retourne tous les enregistrements.
 - `search` : tableau de tableaux : `'table'=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>" < | > | <= | >= | = | != | in_array | not_in_array | fulltext | %fulltext | %fulltext% | fulltext% | like | not_like | %like | %not_like | %like% | %not_like% | like% | not_like% | is_null | is_not_null ", 'value'=><Valeur recherchée>`
 - `sequence` : Chaine de séquence des WHERE. Par défaut, toutes les clauses 'search' du WHERE sont séquencées avec des AND, mais il est possible de renseigner la chaine 'sequence' pour personnaliser. Par exemple : '((WHERE1 AND WHERE2) OR (WHERE3 AND WHERE4))' Les clauses Where sont numérotées de 1 à n et sont dans l'ordre du tableau 'search'. Si 'sequence' est fourni, il faut y renseigner toutes les clauses 'search' du WHERE. 'sequence' ne doit comporter que les chaînes et caractères suivants en plus des WHEREn : '(', ')', ' ', 'OR', 'AND'
-- `sort` : tableau de tableaux : `'table'=><Nom de la table>, 'field'=><Nom du champ>, 'reverse'=><true | false>)`
+- `sort` : tableau de tableaux : `'table'=><Nom de la table>, 'field'=><Nom du champ>, 'reverse'=><true | false>)`. Si `reverse` n'est pas renseigné, il est considéré comme `false`.
 
 Exemple de recherche des 10 premiers clients de France triés par nom de famille
 ```php
