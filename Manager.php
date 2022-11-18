@@ -100,8 +100,10 @@ Le buffer de débogage est vidé lors de sa lecture : $this->debugTxt(), ou lors
 */
 namespace processid\manager;
 
+use PDO;
+
 /**
- * @version 1.8.2
+ * @version 1.9.0
  */
 abstract class Manager {
     protected $db;
@@ -238,7 +240,7 @@ abstract class Manager {
             return false;
         }
 
-        $query->bindValue(':tableName', $this->tableName(), \PDO::PARAM_STR);
+        $query->bindValue(':tableName', $this->tableName(), PDO::PARAM_STR);
 
         $query->execute();
         if ($query === false) {
@@ -248,7 +250,7 @@ abstract class Manager {
 
         self::$_fieldsList[$this->tableName()] = array();
 
-        while ($results = $query->fetch(\PDO::FETCH_ASSOC)) {
+        while ($results = $query->fetch(PDO::FETCH_ASSOC)) {
             self::$_fieldsList[$this->tableName()][$results['COLUMN_NAME']] = array();
             self::$_fieldsList[$this->tableName()][$results['COLUMN_NAME']]['Field'] = $results['COLUMN_NAME'];                                         // Nom du champ
             self::$_fieldsList[$this->tableName()][$results['COLUMN_NAME']]['Type'] = strtolower($results['DATA_TYPE']);                                // Type de champs (bigint, varchar, int, date, decimal, ...)
@@ -332,7 +334,7 @@ abstract class Manager {
         if ($this->debug()) {
             $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $object->$field() . ' (INTEGER)');
         }
-        $query->bindValue(':'.$this->tableIdField(), $object->$field(), \PDO::PARAM_INT);
+        $query->bindValue(':'.$this->tableIdField(), $object->$field(), PDO::PARAM_INT);
 
         // Trouvé tous les champs?
         if ($nb_fields && $count != $nb_fields) {
@@ -357,25 +359,25 @@ abstract class Manager {
 
     function bind_query($query, $bind, $type, $value) {
         if (in_array($type, array('bigint', 'int', 'tinyint', 'smallint', 'mediumint', 'time', 'year'))) {
-            $query->bindValue($bind, (int) $value, \PDO::PARAM_INT);
+            $query->bindValue($bind, (int) $value, PDO::PARAM_INT);
         }
         elseif (in_array($type, array('date', 'datetime', 'timestamp', 'char', 'varchar'))) {
-            $query->bindValue($bind, $value, \PDO::PARAM_STR);
+            $query->bindValue($bind, $value, PDO::PARAM_STR);
         }
         elseif ($type == 'enum') {
-            $query->bindValue($bind, $value, \PDO::PARAM_STR);
+            $query->bindValue($bind, $value, PDO::PARAM_STR);
         }
         elseif (in_array($type, array('tinyblob', 'tinytext', 'blob', 'text', 'mediumblob', 'mediumtext', 'longblob', 'longtext'))) {
-            $query->bindValue($bind, $value, \PDO::PARAM_LOB);
+            $query->bindValue($bind, $value, PDO::PARAM_LOB);
         }
         elseif ($type == 'float') {
-            $query->bindValue($bind, (float) $value, \PDO::PARAM_STR);
+            $query->bindValue($bind, (float) $value, PDO::PARAM_STR);
         }
         elseif ($type == 'double') {
-            $query->bindValue($bind, (double) $value, \PDO::PARAM_STR);
+            $query->bindValue($bind, (double) $value, PDO::PARAM_STR);
         }
         elseif ($type == 'decimal') {
-            $query->bindValue($bind, $value, \PDO::PARAM_STR);
+            $query->bindValue($bind, $value, PDO::PARAM_STR);
         }
         else {
             trigger_error('Champ de type inconnu : ' . $type . ' dans la classe : ' . $this->className(),E_USER_NOTICE);
@@ -495,7 +497,7 @@ abstract class Manager {
             if ($this->debug()) {
                 $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $ID . ' (INTEGER)');
             }
-            $query->bindValue(':'.$this->tableIdField(), $ID, \PDO::PARAM_INT);
+            $query->bindValue(':'.$this->tableIdField(), $ID, PDO::PARAM_INT);
             if ($query === false) {
                 trigger_error(implode(' - ', $this->db->pdo()->errorInfo()) . ' - Error during bindValue() of ' . $requete . ' - :id=' . $ID,E_USER_ERROR);
             }
@@ -506,7 +508,7 @@ abstract class Manager {
                 return false;
             }
 
-            if ($results = $query->fetch(\PDO::FETCH_ASSOC)) {
+            if ($results = $query->fetch(PDO::FETCH_ASSOC)) {
                 // Champs à déchiffrer
                 $ta_fields_to_decrypt = array_intersect_key($results,$this->encryptedFields());
                 foreach ($ta_fields_to_decrypt as $key=>$field_to_decrypt) {
@@ -565,7 +567,7 @@ abstract class Manager {
                     return false;
                 }
 
-                while ($results = $query->fetch(\PDO::FETCH_ASSOC)) {
+                while ($results = $query->fetch(PDO::FETCH_ASSOC)) {
                     // Champs à déchiffrer
                     $ta_fields_to_decrypt = array_intersect_key($results,$this->encryptedFields());
                     foreach ($ta_fields_to_decrypt as $key=>$field_to_decrypt) {
@@ -599,7 +601,7 @@ abstract class Manager {
             if ($this->debug()) {
                 $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $ID . ' (INTEGER');
             }
-            $query->bindValue(':'.$this->tableIdField(), $ID, \PDO::PARAM_INT);
+            $query->bindValue(':'.$this->tableIdField(), $ID, PDO::PARAM_INT);
 
             $query->execute();
             if ($query === false) {
@@ -889,7 +891,7 @@ abstract class Manager {
             $this->setNbResults($results);
             return $this->nbResults();
         } else {
-            while ($results = $query->fetch(\PDO::FETCH_ASSOC)) {
+            while ($results = $query->fetch(PDO::FETCH_ASSOC)) {
                 
                 if ($flag_return_id) {
                     $return[] = intval($results[$this->tableIdField()]);
@@ -930,15 +932,15 @@ abstract class Manager {
         $requete .= ' WHERE ' . $this->tableIdField() . ' = :'.$this->tableIdField();
         $query = $this->db->pdo()->prepare($requete);
 
-        while ($results = $query2->fetch(\PDO::FETCH_ASSOC)) {
+        while ($results = $query2->fetch(PDO::FETCH_ASSOC)) {
             $value = $this->db->dbCrypt()->encrypt_string($results[$list_fields[$this->tableName()][$field]['Field']]);
             if (strlen($value) > $list_fields[$this->tableName()][$field]['CharOctetLength']) {
                 trigger_error('Le champ ' . $field . ' est trop petit, la chaine sera tronquee : ' . strlen($value) . ' > ' . $list_fields[$this->tableName()][$field]['CharOctetLength'],E_USER_NOTICE);
             }
 
-            $query->bindValue(':value', $value, \PDO::PARAM_STR);
+            $query->bindValue(':value', $value, PDO::PARAM_STR);
 
-            $query->bindValue(':'.$this->tableIdField(), (int) $results[$this->tableIdField()], \PDO::PARAM_INT);
+            $query->bindValue(':'.$this->tableIdField(), (int) $results[$this->tableIdField()], PDO::PARAM_INT);
 
             $query->execute();
             if (!$query) {
@@ -969,11 +971,11 @@ abstract class Manager {
         $requete .= ' WHERE ' . $this->tableIdField() . ' = :'.$this->tableIdField();
         $query = $this->db->pdo()->prepare($requete);
 
-        while ($results = $query2->fetch(\PDO::FETCH_ASSOC)) {
+        while ($results = $query2->fetch(PDO::FETCH_ASSOC)) {
             $value = $this->db->dbCrypt()->decrypt_string($results[$list_fields[$this->tableName()][$field]['Field']]);
-            $query->bindValue(':value', $value, \PDO::PARAM_STR);
+            $query->bindValue(':value', $value, PDO::PARAM_STR);
 
-            $query->bindValue(':'.$this->tableIdField(), (int) $results[$this->tableIdField()], \PDO::PARAM_INT);
+            $query->bindValue(':'.$this->tableIdField(), (int) $results[$this->tableIdField()], PDO::PARAM_INT);
 
             $query->execute();
             if (!$query) {
@@ -998,6 +1000,192 @@ abstract class Manager {
                 }
             }
         }
+    }
+    
+    /**
+     * Supprime un répertoire et son contenu, y compris les fichiers et dossier cachés.
+     * @param $dir string Chemin du répertoire à supprimer
+     * @return bool True si le répertoire a été supprimé, false sinon
+     */
+    private static function delTree($dir) {
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+          (is_dir("$dir/$file")) ? self::delTree("$dir/$file") : unlink("$dir/$file");
+        }
+        return rmdir($dir);
+    }
+    
+    /**
+     * Vide un répertoire, y compris les fichiers et dossier cachés.
+     * @param $dir string Chemin du répertoire à vider
+     * @return void
+     */
+    private static function emptyDir($dir) {
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+          (is_dir("$dir/$file")) ? self::delTree("$dir/$file") : unlink("$dir/$file");
+        }
+    }
+    
+    /**
+     * Génère les Models et les Managers à partir des tables de la base de données.
+     * Supprimer les fichiers déjà présents dans le répertoire de sortie generated.
+     * @param DbConnect $dbConnect Connexion à la base de données
+     * @param string $outputPath
+     * @param string[] $tableToGenerate
+     * @return bool True si tous les fichiers ont été générés, false sinon
+     */
+    public static function generateModelsAndChildsManagers($dbConnect, $outputPath = '.', $tableToGenerate = []) {
+        $outputPath = rtrim($outputPath, '/') . '/generated/';
+        $outputPathManager = $outputPath . 'manager/';
+        $outputPathModel = $outputPath . 'model/';
+        
+        
+        // Création des répertoires
+        if (!file_exists($outputPath) || !is_dir($outputPath)) {
+            mkdir($outputPath, 0755, true);
+        } else {
+            // On vide le répertoire récursivement
+            self::emptyDir($outputPath);
+        }
+        if (!file_exists($outputPathManager) || !is_dir($outputPathManager)) {
+            mkdir($outputPathManager, 0755, true);
+        }
+        if (!file_exists($outputPathModel) || !is_dir($outputPathModel)) {
+            mkdir($outputPathModel, 0755, true);
+        }
+        
+        // Liste de toutes les tables
+        $sql = 'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE=\'BASE TABLE\' GROUP BY TABLE_NAME';
+        $req_prep = $dbConnect->pdo()->prepare($sql);
+        $req_prep->execute();
+        $req_prep->setFetchMode(PDO::FETCH_ASSOC);
+        $listTablesNames = $req_prep->fetchAll();
+        
+        foreach ($listTablesNames as $tableName) {
+            if (!empty($tableToGenerate) && !in_array($tableName['TABLE_NAME'], $tableToGenerate)) {
+                continue;
+            }
+            $tableName = $tableName['TABLE_NAME'];
+    
+            // Liste de tous les champs de la table
+            $sql = 'SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_NAME=:tableName GROUP BY COLUMN_NAME ORDER BY ordinal_position';
+            $req_prep = $dbConnect->pdo()->prepare($sql);
+            
+            $values = [
+                'tableName' => $tableName,
+            ];
+            
+            $req_prep->execute($values);
+            $req_prep->setFetchMode(PDO::FETCH_ASSOC);
+            $listColumnsNames = $req_prep->fetchAll();
+    
+            $listColumnsNamesFormated = [];
+            foreach ($listColumnsNames as $columnName) {
+                $listColumnsNamesFormated[] = $columnName['COLUMN_NAME'];
+            }
+            
+            // Création des fichiers Manager
+            // Nom du fichier
+            $fileManagerName = $outputPathManager . ucfirst($tableName) . 'Manager.php';
+            // Suppression des _ et passage en upper case de la lettre qui le suit
+            $toImplodeFileManagerName = [];
+            foreach (explode('_', $fileManagerName) as $explodedFileManagerName) {
+                $toImplodeFileManagerName[] = ucfirst($explodedFileManagerName);
+            }
+            $fileManagerName = implode('', $toImplodeFileManagerName);
+            
+            // Nom de la classe
+            $classManagerName = ucfirst($tableName) . 'Manager';
+            // Suppression des _ et passage en upper case de la lettre qui le suit.
+            $toImplodeClassManagerName = [];
+            foreach (explode('_', $classManagerName) as $explodedClassManagerName) {
+                $toImplodeClassManagerName[] = ucfirst($explodedClassManagerName);
+            }
+            $classManagerName = implode('', $toImplodeClassManagerName);
+            
+            
+            // Création des fichiers Model
+            
+            // Nom du fichier
+            $fileModelName = $outputPathModel . ucfirst($tableName) . '.php';
+            // Suppression des _ et passage en upper case de la lettre qui le suit
+            $toImplodeFileModelName = [];
+            foreach (explode('_', $fileModelName) as $explodedFileModelName) {
+                $toImplodeFileModelName[] = ucfirst($explodedFileModelName);
+            }
+            $fileModelName = implode('', $toImplodeFileModelName);
+            
+            // Nom de la classe
+            $classModelName = ucfirst($tableName);
+            // Suppression des _ et passage en upper case de la lettre qui le suit.
+            $toImplodeClassModelName = [];
+            foreach (explode('_', $classModelName) as $explodedClassModelName) {
+                $toImplodeClassModelName[] = ucfirst($explodedClassModelName);
+            }
+            $classModelName = implode('', $toImplodeClassModelName);
+    
+    
+            // Contenu du fichier Manager
+            $contentManagerFile = '<?php
+
+
+    // Gestion de la table ' . $tableName . '
+    // Do not modify this file, it is generated automatically.
+    
+    namespace src\manager;
+    
+    use processid\manager\DbConnect;
+    use processid\manager\Manager;
+    
+    class ' . $classManagerName . ' extends Manager {
+    
+        public function __construct(DbConnect $db) {
+            $this->setDb($db);
+            $this->setTableName(\'' . $tableName . '\');
+            $this->setTableIdField(\'' . $listColumnsNamesFormated[0] . '\');
+            $this->setClassName(\'\src\model\\' . $classModelName . '\'); // Nom de la classe gérant l\'objet
+        }
+    
+    }
+';
+            $outputManagerFile = fopen($fileManagerName, 'w');
+            if (fwrite($outputManagerFile, $contentManagerFile) === false) {
+                trigger_error('Impossible d\'écrire dans le fichier ' . $fileManagerName, E_USER_ERROR);
+            }
+            fclose($outputManagerFile);
+    
+    
+            // Contenu du fichier Model
+            $contentModelFile = '<?php
+
+    // Do not modify this file, it is generated automatically.
+    
+    namespace src\model;
+    
+    use processid\model\Model;
+    
+    class ' . $classModelName . ' extends Model {
+    
+    ';
+    
+            foreach ($listColumnsNamesFormated as $columnsNamesFormated) {
+                $contentModelFile .= "\tprotected $" . $columnsNamesFormated . ";\n\t";
+            }
+    
+            $contentModelFile .= '
+    }';
+    
+            $outputModelFile = fopen($fileModelName, 'w');
+            if (fwrite($outputModelFile, $contentModelFile) === false) {
+                trigger_error('Impossible d\'écrire dans le fichier ' . $fileModelName, E_USER_ERROR);
+            }
+            fclose($outputModelFile);
+            
+        }
+        
+        return true;
+        
     }
 
 }

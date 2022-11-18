@@ -5,12 +5,12 @@ Système de gestion et de connexion de base de données.
 
 # Installation
 
-Ajoutez à votre fichier `composer.json` dans la section `require`, `"processid/manager": "1.8.2"`. Puis lancez la commande `composer update`.
+Ajoutez à votre fichier `composer.json` dans la section `require`, `"processid/manager": "1.9.0"`. Puis lancez la commande `composer update`.
 Voici un exemple de fichier `composer.json` avec uniquement l'usage du Manager.
 ```json
 {
     "require": {
-        "processid/manager": "1.8.2"
+        "processid/manager": "1.9.0"
     }
 }
 ```
@@ -43,6 +43,17 @@ Voici un exemple de classe fille de `Manager.php` :
     }
 ?>
 ```
+
+Vous pouvez générer automatiquement les classes nécessaires à l'utilisation du Manager en utilisant la fonction `Manager::generateModelsAndChildsManagers()`.
+Cette fonction accepte trois paramètres dont deux optionels:
+- `DbConnect $dbConnect` : Objet de connexion à la base de données
+- `string $outputPath` (*optionel*) : Chemin du dossier de sortie des classes générées. Si non renseigné, il sera considéré comme étant le dossier courant.
+- `string[] $tableToGenerate` (*optionel*) : Liste des tables à partir desquelles générer les classes. Si non renseigné, toutes les tables seront utilisées.
+
+Il vous faudra ensuite déplacer les fichiers générés dans le dossier de votre choix.
+
+**À noter** : un dossier `generated` sera créé dans le dossier de sortie pour y stocker les classes générées.
+**Si ce dernier existe déjà, son contenu sera supprimé avant la génération des classes**.
 
 ## Exemples
 
