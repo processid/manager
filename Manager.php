@@ -1005,14 +1005,14 @@ abstract class Manager {
     /**
      * Supprime un répertoire et son contenu, y compris les fichiers et dossier cachés.
      * @param $dir string Chemin du répertoire à supprimer
-     * @return bool True si le répertoire a été supprimé, false sinon
+     * @return void
      */
     private static function delTree($dir) {
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
           (is_dir("$dir/$file")) ? self::delTree("$dir/$file") : unlink("$dir/$file");
         }
-        return rmdir($dir);
+        rmdir($dir);
     }
     
     /**
@@ -1030,9 +1030,9 @@ abstract class Manager {
     /**
      * Génère les Models et les Managers à partir des tables de la base de données.
      * Supprimer les fichiers déjà présents dans le répertoire de sortie generated.
-     * @param DbConnect $dbConnect Connexion à la base de données
-     * @param string $outputPath
-     * @param string[] $tableToGenerate
+     * @param DbConnect $dbConnect Objet de connexion à la base de données
+     * @param string $outputPath Chemin du dossier de sortie des classes générées. Si non renseigné, il sera considéré comme étant le dossier courant.
+     * @param string[] $tableToGenerate Liste des tables à partir desquelles générer les classes. Si non renseigné, toutes les tables seront utilisées.
      * @return bool True si tous les fichiers ont été générés, false sinon
      */
     public static function generateModelsAndChildsManagers($dbConnect, $outputPath = '.', $tableToGenerate = []) {
