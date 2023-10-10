@@ -103,7 +103,7 @@ namespace processid\manager;
 use PDO;
 
 /**
- * @version 1.9.0
+ * @version 1.10.0
  */
 abstract class Manager {
     protected $db;
