@@ -23,9 +23,10 @@
     // - Une instance de PDO : $this->pdo()
     // - Une instance de \processid\encrypt\EncryptOpenSSL : $this->dbCrypt() qui apporte encrypt_string() et decrypt_string() pré-configurés avec key_aes256 et key_hash512
 
-    */   
+    */
     namespace processid\manager;
 
+    use Exception;
     use \PDO;
     use \processid\encrypt\EncryptOpenSSL;
 
@@ -135,6 +136,27 @@
                 die('Erreur : ' . $e->getMessage());
             }
         }
+        
+        /**
+         * Déconnexion de la base de données
+         * @version 1.9.0
+         * @return void
+         */
+        public function deconnect() {
+            $this->_pdo = null;
+        }
+        
+        /**
+         * Vérifie si la connexion est établie
+         * @version 1.9.0
+         * @return bool true si la connexion est établie, false sinon
+         */
+        public function isConnected() {
+            if ($this->_pdo) {
+                return true;
+            }
+            return false;
+        }
 
         function encrypt() {
             if (strlen($this->key_aes256())) {
@@ -144,4 +166,3 @@
             }
         }
     }
-?>
