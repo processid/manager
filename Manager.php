@@ -71,6 +71,7 @@ SEARCH:
 // $arg : tableau associatif facultatif
 // 'fields' => tableau de tableaux des champs à retourner : 'table'=><Nom de la table>, 'field'=><Nom du champ>, (Optionnel)'alias'=><Alias du champ>, (Optionnel)'function'=><avg | count | distinct | max | min | sum>
 // 'special' chaîne : 'count' ,$this->_nbResults sera mis à jour avec le nombre de résultats de la requête, sans limit ni offset et sans sort. $this->_nbResults sera également retourné
+// 'join' => tableau de tableaux : 'type'=><inner | left | right | full>, 'table'=><Nom de la table>, 'on'=>['table1'=><Nom de la table>, 'field1'=><Nom du champ>, 'table2'=><Nom de la table>, 'field2'=><Nom du champ>]
 // 'beforeWhere' => <Chaîne à insérer avant WHERE (INNER JOIN...)>
 // 'afterWhere' => <Chaîne à insérer après WHERE (GROUP BY...)>
 // 'start' => <Premier enregistrement retourné>
@@ -668,6 +669,51 @@ abstract class Manager {
 
         $requete = 'SELECT ' . $fields;
         $requete .= ' FROM ' . $this->tableName() . ' ';
+
+        // join
+        if (array_key_exists('join',$arg) && is_array($arg['join']) && count($arg['join'])) {
+            foreach ($arg['join'] as $ta_join) {
+                if (!array_key_exists($ta_join['table'], $ta_tables)) {
+                    $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_join['table'])));
+                    $classe = 'src\manager\\' . $table . 'Manager';
+                    $obj = new $classe($this->db);
+                    $obj->recordFields();
+                    $ta_tables = $this->fieldsList();
+                    unset($obj);
+                }
+                if (!array_key_exists($ta_join['on']['table1'], $ta_tables)) {
+                    $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_join['on']['table1'])));
+                    $classe = 'src\manager\\' . $table . 'Manager';
+                    $obj = new $classe($this->db);
+                    $obj->recordFields();
+                    $ta_tables = $this->fieldsList();
+                    unset($obj);
+                }
+                if (!array_key_exists($ta_join['on']['table2'], $ta_tables)) {
+                    $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_join['on']['table2'])));
+                    $classe = 'src\manager\\' . $table . 'Manager';
+                    $obj = new $classe($this->db);
+                    $obj->recordFields();
+                    $ta_tables = $this->fieldsList();
+                    unset($obj);
+                }
+                if (!array_key_exists($ta_join['on']['table1'], $ta_tables)) {
+                    trigger_error('La table : ' . $ta_join['on']['table1'] . ' est introuvable', E_USER_ERROR);
+                }
+                if (!array_key_exists($ta_join['on']['table2'], $ta_tables)) {
+                    trigger_error('La table : ' . $ta_join['on']['table2'] . ' est introuvable', E_USER_ERROR);
+                }
+                if (!array_key_exists($ta_join['on']['field1'], $ta_tables[$ta_join['on']['table1']])) {
+                    trigger_error('Le champ : ' . $ta_join['on']['field1'] . ' est introuvable dans la table : ' . $ta_join['on']['table1'], E_USER_ERROR);
+                }
+                if (!array_key_exists($ta_join['on']['field2'], $ta_tables[$ta_join['on']['table2']])) {
+                    trigger_error('Le champ : ' . $ta_join['on']['field2'] . ' est introuvable dans la table : ' . $ta_join['on']['table2'], E_USER_ERROR);
+                }
+
+                $requete .= ' ' . strtoupper($ta_join['type']) . ' JOIN ' . $ta_join['table'] . ' ON ' . $ta_join['on']['table1'] . '.' . $ta_join['on']['field1'] . '=' . $ta_join['on']['table2'] . '.' . $ta_join['on']['field2'];
+            }
+        }
+
 
         // beforeWhere
         if (array_key_exists('beforeWhere',$arg)) {
