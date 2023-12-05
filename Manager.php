@@ -74,6 +74,7 @@ SEARCH:
 // 'join' => tableau de tableaux : 'type'=><inner | left | right | full>, 'table'=><Nom de la table>, 'on'=>['table1'=><Nom de la table>, 'field1'=><Nom du champ>, 'table2'=><Nom de la table>, 'field2'=><Nom du champ>]
 // 'beforeWhere' => <Chaîne à insérer avant WHERE (INNER JOIN...)>
 // 'afterWhere' => <Chaîne à insérer après WHERE (GROUP BY...)>
+// 'groupBy' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>
 // 'start' => <Premier enregistrement retourné>
 // 'limit' => <Nb enregistrements retournés> défaut: tout est retourné (limit doit être > 0 si start est > 0)
 // 'search' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>" < | > | <= | >= | = | != | in_array | not_in_array | fulltext | %fulltext | %fulltext% | fulltext% | like | not_like | %like | %not_like | %like% | %not_like% | like% | not_like% | is_null | is_not_null ", 'value'=><Valeur recherchée>
@@ -848,6 +849,28 @@ abstract class Manager {
         // afterWhere
         if (array_key_exists('afterWhere',$arg)) {
             $requete .= ' ' . $arg['afterWhere'] . ' ';
+        }
+
+        // Group by
+        if (array_key_exists('groupBy',$arg) && is_array($arg['groupBy']) && count($arg['groupBy'])) {
+            $requete .= ' GROUP BY ';
+            $count = 0;
+            foreach ($arg['groupBy'] as $ta_groupBy) {
+                if (!array_key_exists($ta_groupBy['table'],$ta_tables)) {
+                    $table = preg_replace('/ /','',ucwords(preg_replace('/_/',' ',$ta_groupBy['table'])));
+                    $classe = 'src\manager\\' . $table.'Manager';
+                    //$classe = 'src\manager\\' . ucfirst($ta_groupBy['table']).'Manager';
+                    $obj = new $classe($this->db);
+                    $obj->recordFields();
+                    $ta_tables = $this->fieldsList();
+                    unset($obj);
+                }
+                if (!array_key_exists($ta_groupBy['field'],$ta_tables[$ta_groupBy['table']])) {
+                    trigger_error('Le champ : ' . $ta_groupBy['field'] . ' est introuvable dans la table : ' . $ta_groupBy['table'],E_USER_ERROR);
+                }
+                if ($count++) { $requete .= ', '; }
+                $requete .= $ta_groupBy['table'] . '.' . $ta_groupBy['field'];
+            }
         }
 
         if (!$flag_count) {
