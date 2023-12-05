@@ -69,7 +69,7 @@ SEARCH:
 // search() retourne un tableau associatif des champs demandés dans fields[]
 // Si fields[] est vide, search retourne un tableau d'ID qu'il est possible de passer directement à getList()
 // $arg : tableau associatif facultatif
-// 'fields' => tableau de tableaux des champs à retourner : 'table'=><Nom de la table>, 'field'=><Nom du champ>, (Optionnel)'alias'=><Alias du champ>
+// 'fields' => tableau de tableaux des champs à retourner : 'table'=><Nom de la table>, 'field'=><Nom du champ>, (Optionnel)'alias'=><Alias du champ>, (Optionnel)'function'=><avg | count | distinct | max | min | sum>
 // 'special' chaîne : 'count' ,$this->_nbResults sera mis à jour avec le nombre de résultats de la requête, sans limit ni offset et sans sort. $this->_nbResults sera également retourné
 // 'beforeWhere' => <Chaîne à insérer avant WHERE (INNER JOIN...)>
 // 'afterWhere' => <Chaîne à insérer après WHERE (GROUP BY...)>
@@ -648,7 +648,15 @@ abstract class Manager {
                 } elseif (!array_key_exists($ta_field['field'],$ta_tables[$ta_field['table']])) {
                     trigger_error('Le champ : ' . $ta_field['field'] . ' est introuvable dans la table : ' . $ta_field['table'],E_USER_ERROR);
                 } else {
-                    $fields .= $ta_field['table'] . '.' . $ta_field['field'];
+                    if (array_key_exists('function',$ta_field) && !empty($ta_field['function'])) {
+                        if (!in_array($ta_field['function'],array('avg','count','distinct','max','min','sum'))) {
+                            trigger_error('La fonction : ' . $ta_field['function'] . ' est inconnue',E_USER_ERROR);
+                        }
+                        $fields .= strtoupper($ta_field['function']) . '(' . $ta_field['table'] . '.' . $ta_field['field'] . ')';
+                    } else {
+                        $fields .= $ta_field['table'] . '.' . $ta_field['field'];
+                    }
+
                     if (!empty($ta_field['alias'])) {
                         $fields .= ' AS ' . $ta_field['alias'];
                     }
