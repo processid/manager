@@ -5,12 +5,12 @@ Système de gestion et de connexion de base de données.
 
 # Installation
 
-Ajoutez à votre fichier `composer.json` dans la section `require`, `"processid/manager": "1.8.2"`. Puis lancez la commande `composer update`.
+Ajoutez à votre fichier `composer.json` dans la section `require`, `"processid/manager": "2.1.0"`. Puis lancez la commande `composer update`.
 Voici un exemple de fichier `composer.json` avec uniquement l'usage du Manager.
 ```json
 {
     "require": {
-        "processid/manager": "^2.0"
+        "processid/manager": "2.1.0"
     }
 }
 ```
