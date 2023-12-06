@@ -105,7 +105,7 @@ Le buffer de débogage est vidé lors de sa lecture : $this->debugTxt(), ou lors
 namespace processid\manager;
 
 /**
- * @version 2.1.2
+ * @version 2.1.3
  */
 
 abstract class Manager {
@@ -946,7 +946,7 @@ abstract class Manager {
                         }
                         if ($count++) { $request .= ', '; } else { $request .= ' ORDER BY '; }
                         $request .= $ta_sort['table'] . '.' . $ta_sort['field'];
-                        if ($ta_sort['reverse']) {
+                        if (array_key_exists('reverse',$ta_sort) && $ta_sort['reverse']) {
                             $request .= ' DESC';
                         }
                     }
