@@ -853,8 +853,11 @@ abstract class Manager {
                     trigger_error('Sous-requête inconnue', E_USER_ERROR);
                 }
 
+                // On passe temporairement sur la table de la sous-requête
+                $tmp_table = $this->tableName();
                 $this->setTableName($ta_subRequest['fromTable']);
                 $ta_where[] = $ta_subRequest['table'] . '.' . $ta_subRequest['field'] . ' ' . $ta_subRequest['operator'] . ' (' . $this->contruct_request($arg['subRequests'][$ta_subRequest['subRequest']],true) . ')';
+                $this->setTableName($tmp_table);
             }
         }
 
