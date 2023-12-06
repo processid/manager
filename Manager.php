@@ -78,7 +78,7 @@ SEARCH:
 // 'start' => <Premier enregistrement retourné>
 // 'limit' => <Nb enregistrements retournés> défaut: tout est retourné (limit doit être > 0 si start est > 0)
 // 'search' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>" < | > | <= | >= | = | != | in_array | not_in_array | fulltext | %fulltext | %fulltext% | fulltext% | like | not_like | %like | %not_like | %like% | %not_like% | like% | not_like% | is_null | is_not_null ", 'value'=><Valeur recherchée>
-// 'subRequest' => tableau associatif : 'table"=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>' < | > | <= | >= | = | != | in_array | not_in_array ', 'subRequest'=><Nom de la sous requête (clef)>, 'fromTable'=><Nom de la table FROM de la sous requête>
+// 'subRequest' => tableau associatif : 'table"=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>' < | > | <= | >= | = | != | in | not_in ', 'subRequest'=><Nom de la sous requête (clef)>, 'fromTable'=><Nom de la table FROM de la sous requête>
 // 'subRequests' => tableau associatif de tableaux ex.: $arg['subRequests']['subRequest1']['search'][] = ... Les sous-requêtes sont construites comme des requêtes de search classiques. 'subRequest1' est le nom de la sous-requête. Il est possible de faire des sous-requêtes imbriquées.
 // 'sequence' => <Chaîne de séquencement du WHERE>
 //      Par défaut, toutes les clauses 'search' du WHERE sont séquencées avec des AND, mais il est possible de renseigner la chaine 'sequence' pour personnaliser
@@ -105,7 +105,7 @@ Le buffer de débogage est vidé lors de sa lecture : $this->debugTxt(), ou lors
 namespace processid\manager;
 
 /**
- * @version 2.1.0
+ * @version 2.1.2
  */
 
 abstract class Manager {
@@ -858,10 +858,13 @@ abstract class Manager {
                     trigger_error('Sous-requête inconnue', E_USER_ERROR);
                 }
 
+                // Operator
+                $operator = str_replace('_',' ',$ta_subRequest['operator']);
+
                 // On passe temporairement sur la table de la sous-requête
                 $tmp_table = $this->tableName();
                 $this->setTableName($ta_subRequest['fromTable']);
-                $ta_where[] = $ta_subRequest['table'] . '.' . $ta_subRequest['field'] . ' ' . $ta_subRequest['operator'] . ' (' . $this->contruct_request($arg['subRequests'][$ta_subRequest['subRequest']],true) . ')';
+                $ta_where[] = $ta_subRequest['table'] . '.' . $ta_subRequest['field'] . ' ' . $operator . ' (' . $this->contruct_request($arg['subRequests'][$ta_subRequest['subRequest']],true) . ')';
                 $this->setTableName($tmp_table);
             }
         }

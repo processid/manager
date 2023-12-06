@@ -5,12 +5,12 @@ Système de gestion et de connexion de base de données.
 
 # Installation
 
-Ajoutez à votre fichier `composer.json` dans la section `require`, `"processid/manager": "2.1.0"`. Puis lancez la commande `composer update`.
+Ajoutez à votre fichier `composer.json` dans la section `require`, `"processid/manager": "2.1.2"`. Puis lancez la commande `composer update`.
 Voici un exemple de fichier `composer.json` avec uniquement l'usage du Manager.
 ```json
 {
     "require": {
-        "processid/manager": "2.1.0"
+        "processid/manager": "2.1.2"
     }
 }
 ```
@@ -107,15 +107,19 @@ $this->delete($ID);
 `search()` retourne un tableau associatif des champs demandés dans fields[]
 Si `fields[]` est vide, search retourne un tableau d'IDs qu'il est possible de passer directement à `getList()`.
 `$arg` est un tableau associatif facultatif. Il peut contenir les clés suivantes :
-- `fields` : tableau de tableaux des champs à retourner : `'table'=><Nom de la table>, 'field'=><Nom du champ>, (Optionnel)'alias'=><Alias du champ>`
+- `fields` : tableau de tableaux des champs à retourner : `'table'=><Nom de la table>, 'field'=><Nom du champ>, (Optionnel)'alias'=><Alias du champ>, (Optionnel)'function'=><avg | count | distinct | max | min | sum>`
 - `special` : chaîne 'count', `$this->_nbResults` sera mis à jour avec le nombre de résultats de la requête, sans limit ni offset et sans sort. `$this->_nbResults` sera également retourné
+- `join` : tableau de tableaux : `'type'=><inner | left | right | full>, 'table'=><Nom de la table>, 'on'=>['table1'=><Nom de la table>, 'field1'=><Nom du champ>, 'table2'=><Nom de la table>, 'field2'=><Nom du champ>]`
 - `beforeWhere` : Chaîne à insérer avant WHERE (INNER JOIN...)
 - `afterWhere` : Chaîne à insérer après WHERE (GROUP BY...)
 - `start` : Premier enregistrement retourné
 - `limit` : Nombre d'enregistrements retournés. Si `start `> 0, alors `limit` > 0. `limit` = 0 retourne tous les enregistrements.
 - `search` : tableau de tableaux : `'table'=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>" < | > | <= | >= | = | != | in_array | not_in_array | fulltext | %fulltext | %fulltext% | fulltext% | like | not_like | %like | %not_like | %like% | %not_like% | like% | not_like% | is_null | is_not_null ", 'value'=><Valeur recherchée>`
+- `subRequest` : tableau associatif : `'table"=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>' < | > | <= | >= | = | != | in | not_in ', 'subRequest'=><Nom de la sous requête (clef)>, 'fromTable'=><Nom de la table FROM de la sous requête>`
+- `subRequests` : tableau associatif de tableaux ex.: `$arg['subRequests']['subRequest1']['search'][] = ...` Les sous-requêtes sont construites comme des requêtes de search classiques. 'subRequest1' est le nom de la sous-requête. Il est possible de faire des sous-requêtes imbriquées.
 - `sequence` : Chaine de séquence des WHERE. Par défaut, toutes les clauses 'search' du WHERE sont séquencées avec des AND, mais il est possible de renseigner la chaine 'sequence' pour personnaliser. Par exemple : '((WHERE1 AND WHERE2) OR (WHERE3 AND WHERE4))' Les clauses Where sont numérotées de 1 à n et sont dans l'ordre du tableau 'search'. Si 'sequence' est fourni, il faut y renseigner toutes les clauses 'search' du WHERE. 'sequence' ne doit comporter que les chaînes et caractères suivants en plus des WHEREn : '(', ')', ' ', 'OR', 'AND'
 - `sort` : tableau de tableaux : `'table'=><Nom de la table>, 'field'=><Nom du champ>, 'reverse'=><true | false>)`. Si `reverse` n'est pas renseigné, il est considéré comme `false`.
+  Si `reverse` n'est pas précisé, il est considéré comme false
 
 Exemple de recherche des 10 premiers clients de France triés par nom de famille
 ```php
