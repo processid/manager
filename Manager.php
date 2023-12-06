@@ -711,6 +711,11 @@ abstract class Manager {
                     trigger_error('Le champ : ' . $ta_join['on']['field2'] . ' est introuvable dans la table : ' . $ta_join['on']['table2'], E_USER_ERROR);
                 }
 
+                // Contrôle du type de jointure
+                if (!array_key_exists('type',$ta_join) || !in_array($ta_join['type'],array('left','right','inner','full'))) {
+                    $ta_join['type'] = 'inner';
+                }
+
                 $requete .= ' ' . strtoupper($ta_join['type']) . ' JOIN ' . $ta_join['table'] . ' ON ' . $ta_join['on']['table1'] . '.' . $ta_join['on']['field1'] . '=' . $ta_join['on']['table2'] . '.' . $ta_join['on']['field2'];
             }
         }
