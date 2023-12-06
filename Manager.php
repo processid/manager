@@ -105,7 +105,7 @@ Le buffer de débogage est vidé lors de sa lecture : $this->debugTxt(), ou lors
 namespace processid\manager;
 
 /**
- * @version 2.1.0
+ * @version 2.1.1
  */
 
 abstract class Manager {
