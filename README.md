@@ -109,6 +109,7 @@ Si `fields[]` est vide, search retourne un tableau d'IDs qu'il est possible de p
 `$arg` est un tableau associatif facultatif. Il peut contenir les clés suivantes :
 - `fields` : tableau de tableaux des champs à retourner : `'table'=><Nom de la table>, 'field'=><Nom du champ>, (Optionnel)'alias'=><Alias du champ>`
 - `special` : chaîne 'count', `$this->_nbResults` sera mis à jour avec le nombre de résultats de la requête, sans limit ni offset et sans sort. `$this->_nbResults` sera également retourné
+- `join` : tableau de tableaux : `'type'=><inner | left | right | full>, 'table'=><Nom de la table>, 'on'=>['table1'=><Nom de la table>, 'field1'=><Nom du champ>, 'table2'=><Nom de la table>, 'field2'=><Nom du champ>]`
 - `beforeWhere` : Chaîne à insérer avant WHERE (INNER JOIN...)
 - `afterWhere` : Chaîne à insérer après WHERE (GROUP BY...)
 - `start` : Premier enregistrement retourné
