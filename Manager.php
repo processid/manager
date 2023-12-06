@@ -25,7 +25,7 @@ class Clients extends \ProcessID\Manager\Manager {
 
 // Il est possible de chiffrer toute une colonne:
 // Attention, peut prendre beaucoup de temps suivant le nombre d'enregistrements
-// La colonne doit être suffisamment large pour acueillir la chaîne chiffrée
+// La colonne doit être suffisamment large pour accueillir la chaîne chiffrée
 $this->encrypt_column($champ);
 
 // Et l'opération inverse:
@@ -69,19 +69,22 @@ SEARCH:
 // search() retourne un tableau associatif des champs demandés dans fields[]
 // Si fields[] est vide, search retourne un tableau d'ID qu'il est possible de passer directement à getList()
 // $arg : tableau associatif facultatif
-// 'fields' => tableau de tableaux des champs à retourner : 'table'=><Nom de la table>, 'field'=><Nom du champ>, (Optionnel)'alias'=><Alias du champ>
+// 'fields' => tableau de tableaux des champs à retourner : 'table'=><Nom de la table>, 'field'=><Nom du champ>, (Optionnel)'alias'=><Alias du champ>, (Optionnel)'function'=><avg | count | distinct | max | min | sum>
 // 'special' chaîne : 'count' ,$this->_nbResults sera mis à jour avec le nombre de résultats de la requête, sans limit ni offset et sans sort. $this->_nbResults sera également retourné
+// 'join' => tableau de tableaux : 'type'=><inner | left | right | full>, 'table'=><Nom de la table>, 'on'=>['table1'=><Nom de la table>, 'field1'=><Nom du champ>, 'table2'=><Nom de la table>, 'field2'=><Nom du champ>]
 // 'beforeWhere' => <Chaîne à insérer avant WHERE (INNER JOIN...)>
 // 'afterWhere' => <Chaîne à insérer après WHERE (GROUP BY...)>
+// 'groupBy' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>
 // 'start' => <Premier enregistrement retourné>
 // 'limit' => <Nb enregistrements retournés> défaut: tout est retourné (limit doit être > 0 si start est > 0)
 // 'search' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>" < | > | <= | >= | = | != | in_array | not_in_array | fulltext | %fulltext | %fulltext% | fulltext% | like | not_like | %like | %not_like | %like% | %not_like% | like% | not_like% | is_null | is_not_null ", 'value'=><Valeur recherchée>
+// 'subRequest' => tableau associatif : 'table"=><Nom de la table>, 'field'=><Nom du champ>, 'operator'=>' < | > | <= | >= | = | != | in_array | not_in_array ', 'subRequest'=><Nom de la sous requête (clef)>, 'fromTable'=><Nom de la table FROM de la sous requête>
+// 'subRequests' => tableau associatif de tableaux ex.: $arg['subRequests']['subRequest1']['search'][] = ... Les sous-requêtes sont construites comme des requêtes de search classiques. 'subRequest1' est le nom de la sous-requête. Il est possible de faire des sous-requêtes imbriquées.
 // 'sequence' => <Chaîne de séquencement du WHERE>
 //      Par défaut, toutes les clauses 'search' du WHERE sont séquencées avec des AND, mais il est possible de renseigner la chaine 'sequence' pour personnaliser
 //      Par exemple : '((WHERE1 AND WHERE2) OR (WHERE3 AND WHERE4))' Les clauses Where sont numérotées de 1 à n et sont dans l'ordre du tableau 'search'. Si 'sequence' est fourni, il faut y renseigner toutes les clauses 'search' du WHERE.
 //      'sequence' ne doit comporter que les chaînes et caractères suivants en plus des WHEREn : '(', ')', ' ', 'OR', 'AND'
 // 'sort' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>, 'reverse'=><true | false>)
-// Si 'reverse' n'est pas précisé, il est considéré comme false
 
 // exemple de recherche
 $arg = array('start'=>0,'limit'=>0,'fields'=>array(),'search'=>array(),'sort'=>array());
@@ -100,9 +103,6 @@ Le buffer de débogage est vidé lors de sa lecture : $this->debugTxt(), ou lors
 */
 namespace processid\manager;
 
-/**
- * @version 1.8.2
- */
 abstract class Manager {
     protected $db;
     protected $crypt;
@@ -116,6 +116,10 @@ abstract class Manager {
     private $_encryptedFields = array();
     private $_encryptedFieldsSortable = array();
     private $_encryptedFieldsSortableCreate = false;
+    private $_request = '';
+    private $_ta_bind = array();
+    private $_count_bind = 0;
+    private $_ta_request_tables = array();
 
     // La liste des champs est partagée entre toutes les classes qui héritent de la classe Manager (<table>Manager)
     private static $_fieldsList = array();
@@ -582,7 +586,6 @@ abstract class Manager {
     }
 
 
-
     public function delete(int $ID) {
         $ID = intval($ID);
         if ($ID) {
@@ -612,14 +615,16 @@ abstract class Manager {
     }
 
 
-    public function search(array $arg = array()) {
-        $return = array();
-        
-        // Par défaut, on retourne un tableau d'ID
-        $flag_return_id = true;
+    public function contruct_request(array $arg = array(), $subRequest = false) {
+        if (!$subRequest) {
+            $request = '';
+            $this->_ta_bind = array();
+            $this->_count_bind = 0;
+            $this->_ta_request_tables = array();
+        }
 
         // Tableau de la structure des tables
-        $ta_tables = $this->fieldsList();
+        $this->_ta_request_tables = $this->fieldsList();
         if (!isset($ta_tables[$this->tableName()]) || !is_array($ta_tables[$this->tableName()])) {
             $this->recordFields();
             $ta_tables = $this->fieldsList();
@@ -634,7 +639,6 @@ abstract class Manager {
 
         $fields = '';
         if (array_key_exists('fields',$arg) && is_array($arg['fields']) && count($arg['fields'])) {
-            $flag_return_id = false;
             foreach ($arg['fields'] as $ta_field) {
                 if ($fields != '') {
                     $fields .= ',';
@@ -652,7 +656,15 @@ abstract class Manager {
                 } elseif (!array_key_exists($ta_field['field'],$ta_tables[$ta_field['table']])) {
                     trigger_error('Le champ : ' . $ta_field['field'] . ' est introuvable dans la table : ' . $ta_field['table'],E_USER_ERROR);
                 } else {
-                    $fields .= $ta_field['table'] . '.' . $ta_field['field'];
+                    if (array_key_exists('function',$ta_field) && !empty($ta_field['function'])) {
+                        if (!in_array($ta_field['function'],array('avg','count','distinct','max','min','sum'))) {
+                            trigger_error('La fonction : ' . $ta_field['function'] . ' est inconnue',E_USER_ERROR);
+                        }
+                        $fields .= strtoupper($ta_field['function']) . '(' . $ta_field['table'] . '.' . $ta_field['field'] . ')';
+                    } else {
+                        $fields .= $ta_field['table'] . '.' . $ta_field['field'];
+                    }
+
                     if (!empty($ta_field['alias'])) {
                         $fields .= ' AS ' . $ta_field['alias'];
                     }
@@ -662,21 +674,69 @@ abstract class Manager {
             $fields = $this->tableName() . '.' . $this->tableIdField();
         }
 
-        $requete = 'SELECT ' . $fields;
-        $requete .= ' FROM ' . $this->tableName() . ' ';
+        $request = 'SELECT ' . $fields;
+        $request .= ' FROM ' . $this->tableName() . ' ';
+
+        // join
+        if (array_key_exists('join',$arg) && is_array($arg['join']) && count($arg['join'])) {
+            foreach ($arg['join'] as $ta_join) {
+                if (!array_key_exists($ta_join['table'], $ta_tables)) {
+                    $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_join['table'])));
+                    $classe = 'src\manager\\' . $table . 'Manager';
+                    $obj = new $classe($this->db);
+                    $obj->recordFields();
+                    $ta_tables = $this->fieldsList();
+                    unset($obj);
+                }
+                if (!array_key_exists($ta_join['on']['table1'], $ta_tables)) {
+                    $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_join['on']['table1'])));
+                    $classe = 'src\manager\\' . $table . 'Manager';
+                    $obj = new $classe($this->db);
+                    $obj->recordFields();
+                    $ta_tables = $this->fieldsList();
+                    unset($obj);
+                }
+                if (!array_key_exists($ta_join['on']['table2'], $ta_tables)) {
+                    $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_join['on']['table2'])));
+                    $classe = 'src\manager\\' . $table . 'Manager';
+                    $obj = new $classe($this->db);
+                    $obj->recordFields();
+                    $ta_tables = $this->fieldsList();
+                    unset($obj);
+                }
+                if (!array_key_exists($ta_join['on']['table1'], $ta_tables)) {
+                    trigger_error('La table : ' . $ta_join['on']['table1'] . ' est introuvable', E_USER_ERROR);
+                }
+                if (!array_key_exists($ta_join['on']['table2'], $ta_tables)) {
+                    trigger_error('La table : ' . $ta_join['on']['table2'] . ' est introuvable', E_USER_ERROR);
+                }
+                if (!array_key_exists($ta_join['on']['field1'], $ta_tables[$ta_join['on']['table1']])) {
+                    trigger_error('Le champ : ' . $ta_join['on']['field1'] . ' est introuvable dans la table : ' . $ta_join['on']['table1'], E_USER_ERROR);
+                }
+                if (!array_key_exists($ta_join['on']['field2'], $ta_tables[$ta_join['on']['table2']])) {
+                    trigger_error('Le champ : ' . $ta_join['on']['field2'] . ' est introuvable dans la table : ' . $ta_join['on']['table2'], E_USER_ERROR);
+                }
+
+                // Contrôle du type de jointure
+                if (!array_key_exists('type',$ta_join) || !in_array($ta_join['type'],array('left','right','inner','full'))) {
+                    $ta_join['type'] = 'inner';
+                }
+
+                $request .= ' ' . strtoupper($ta_join['type']) . ' JOIN ' . $ta_join['table'] . ' ON ' . $ta_join['on']['table1'] . '.' . $ta_join['on']['field1'] . '=' . $ta_join['on']['table2'] . '.' . $ta_join['on']['field2'];
+            }
+        }
+
 
         // beforeWhere
         if (array_key_exists('beforeWhere',$arg)) {
-            $requete .= $arg['beforeWhere'] . ' ';
+            $request .= $arg['beforeWhere'] . ' ';
         }
 
         // search
         if (!array_key_exists('search',$arg) || !is_array($arg['search'])) {
             $arg['search'] = array();
         }
-        
-        $countBind = 0;
-        $ta_bind = array();
+
         $ta_where = array();
 
         foreach ($arg['search'] as $ta_search) {
@@ -697,11 +757,11 @@ abstract class Manager {
             }
             if (in_array($ta_search['operator'],array('fulltext','%fulltext','%fulltext%','fulltext%'))) {
                 if (preg_match('#^id[0-9]{1,}$#', $ta_search['value'])) {
-                    $ta_bind[$countBind] = array();
-                    $ta_bind[$countBind]['table'] = $ta_search['table'];
-                    $ta_bind[$countBind]['field'] = $this->tableIdField();
-                    $ta_bind[$countBind]['value'] = (int) trim(substr($ta_search['value'], 2));
-                    $ta_where[] = $ta_search['table'] . '.' . $this->tableIdField() . '=:bind' . $countBind++;
+                    $this->_ta_bind[$this->_count_bind] = array();
+                    $this->_ta_bind[$this->_count_bind]['table'] = $ta_search['table'];
+                    $this->_ta_bind[$this->_count_bind]['field'] = $this->tableIdField();
+                    $this->_ta_bind[$this->_count_bind]['value'] = (int) trim(substr($ta_search['value'], 2));
+                    $ta_where[] = $ta_search['table'] . '.' . $this->tableIdField() . '=:bind' . $this->_count_bind++;
                 } else {
                     $recStr = preg_replace("/[[:punct:]]/u", " ", $ta_search['value']);
                     $recStr = preg_replace("/[[:space:]]{2,}/u", " ", $recStr);
@@ -712,43 +772,43 @@ abstract class Manager {
                         if ($countMots > 0) {
                             $condition_tmp .= ' AND ';
                         }
-                        $ta_bind[$countBind] = array();
-                        $ta_bind[$countBind]['table'] = $ta_search['table'];
-                        $ta_bind[$countBind]['field'] = $ta_search['field'];
-                        if ($ta_search['operator'] == 'fulltext') { $ta_bind[$countBind]['value'] = $mot; }
-                        elseif ($ta_search['operator'] == '%fulltext') { $ta_bind[$countBind]['value'] = '%' . $mot; }
-                        elseif ($ta_search['operator'] == '%fulltext%') { $ta_bind[$countBind]['value'] = '%' . $mot . '%'; }
-                        elseif ($ta_search['operator'] == 'fulltext%') { $ta_bind[$countBind]['value'] = $mot . '%'; }
+                        $this->_ta_bind[$this->_count_bind] = array();
+                        $this->_ta_bind[$this->_count_bind]['table'] = $ta_search['table'];
+                        $this->_ta_bind[$this->_count_bind]['field'] = $ta_search['field'];
+                        if ($ta_search['operator'] == 'fulltext') { $this->_ta_bind[$this->_count_bind]['value'] = $mot; }
+                        elseif ($ta_search['operator'] == '%fulltext') { $this->_ta_bind[$this->_count_bind]['value'] = '%' . $mot; }
+                        elseif ($ta_search['operator'] == '%fulltext%') { $this->_ta_bind[$this->_count_bind]['value'] = '%' . $mot . '%'; }
+                        elseif ($ta_search['operator'] == 'fulltext%') { $this->_ta_bind[$this->_count_bind]['value'] = $mot . '%'; }
 
-                        $condition_tmp .= $ta_search['table'] . '.' . $ta_search['field'] . ' LIKE :bind' . $countBind++;
+                        $condition_tmp .= $ta_search['table'] . '.' . $ta_search['field'] . ' LIKE :bind' . $this->_count_bind++;
                         $countMots++;
                     }
                     $condition_tmp .= ' )';
                     $ta_where[] = $condition_tmp;
                 }
             } elseif (in_array($ta_search['operator'],array('like','not_like','%like','%not_like','%like%','%not_like%','like%','not_like%'))) {
-                $ta_bind[$countBind] = array();
-                $ta_bind[$countBind]['table'] = $ta_search['table'];
-                $ta_bind[$countBind]['field'] = $ta_search['field'];
-                if ($ta_search['operator'] == 'like') { $ta_bind[$countBind]['value'] = $ta_search['value']; }
-                elseif ($ta_search['operator'] == '%like') { $ta_bind[$countBind]['value'] = '%' . $ta_search['value']; }
-                elseif ($ta_search['operator'] == '%like%') { $ta_bind[$countBind]['value'] = '%' . $ta_search['value'] . '%'; }
-                elseif ($ta_search['operator'] == 'like%') { $ta_bind[$countBind]['value'] = $ta_search['value'] . '%'; }
+                $this->_ta_bind[$this->_count_bind] = array();
+                $this->_ta_bind[$this->_count_bind]['table'] = $ta_search['table'];
+                $this->_ta_bind[$this->_count_bind]['field'] = $ta_search['field'];
+                if ($ta_search['operator'] == 'like') { $this->_ta_bind[$this->_count_bind]['value'] = $ta_search['value']; }
+                elseif ($ta_search['operator'] == '%like') { $this->_ta_bind[$this->_count_bind]['value'] = '%' . $ta_search['value']; }
+                elseif ($ta_search['operator'] == '%like%') { $this->_ta_bind[$this->_count_bind]['value'] = '%' . $ta_search['value'] . '%'; }
+                elseif ($ta_search['operator'] == 'like%') { $this->_ta_bind[$this->_count_bind]['value'] = $ta_search['value'] . '%'; }
                 $not = '';
                 if (in_array($ta_search['operator'],array('not_like','%not_like','%not_like%','not_like%'))) {
                     $not = ' NOT';
                 }
-                $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . $not . ' LIKE :bind' . $countBind++;
+                $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . $not . ' LIKE :bind' . $this->_count_bind++;
             } elseif (in_array($ta_search['operator'],array('in_array','not_in_array'))) {
                 if (is_array($ta_search['value'])) {
                     $IDs = '';
                     if (count($ta_search['value'])) {
                         foreach ($ta_search['value'] as $value) {
-                            $ta_bind[$countBind] = array();
-                            $ta_bind[$countBind]['table'] = $ta_search['table'];
-                            $ta_bind[$countBind]['field'] = $ta_search['field'];
-                            $ta_bind[$countBind]['value'] = $value;
-                            $IDs .= ':bind' . $countBind++ . ',';
+                            $this->_ta_bind[$this->_count_bind] = array();
+                            $this->_ta_bind[$this->_count_bind]['table'] = $ta_search['table'];
+                            $this->_ta_bind[$this->_count_bind]['field'] = $ta_search['field'];
+                            $this->_ta_bind[$this->_count_bind]['value'] = $value;
+                            $IDs .= ':bind' . $this->_count_bind++ . ',';
                         }
                         $IDs = rtrim($IDs,",");
                     }
@@ -763,22 +823,49 @@ abstract class Manager {
             } elseif ($ta_search['operator'] == 'is_not_null') {
                 $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' IS NOT NULL';
             } else {
-                $ta_bind[$countBind] = array();
-                $ta_bind[$countBind]['table'] = $ta_search['table'];
-                $ta_bind[$countBind]['field'] = $ta_search['field'];
-                $ta_bind[$countBind]['value'] = $ta_search['value'];
-                $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' ' . $ta_search['operator'] . ' :bind' . $countBind++;
+                $this->_ta_bind[$this->_count_bind] = array();
+                $this->_ta_bind[$this->_count_bind]['table'] = $ta_search['table'];
+                $this->_ta_bind[$this->_count_bind]['field'] = $ta_search['field'];
+                $this->_ta_bind[$this->_count_bind]['value'] = $ta_search['value'];
+                $ta_where[] = $ta_search['table'] . '.' . $ta_search['field'] . ' ' . $ta_search['operator'] . ' :bind' . $this->_count_bind++;
             }
         }
-        
+
+        // Sous-requêtes
+        if (array_key_exists('subRequest',$arg) && is_array($arg['subRequest']) && count($arg['subRequest'])) {
+            foreach ($arg['subRequest'] as $ta_subRequest) {
+                if (!array_key_exists($ta_subRequest['table'], $ta_tables)) {
+                    $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_subRequest['table'])));
+                    $classe = 'src\manager\\' . $table . 'Manager';
+                    //$classe = 'src\manager\\' . $ta_subRequest['table'].'Manager';
+                    $obj = new $classe($this->db);
+                    $obj->recordFields();
+                    $ta_tables = $this->fieldsList();
+                    unset($obj);
+                }
+                if (!array_key_exists($ta_subRequest['field'], $ta_tables[$ta_subRequest['table']])) {
+                    trigger_error('Le champ : ' . $ta_subRequest['field'] . ' est introuvable dans la table : ' . $ta_subRequest['table'], E_USER_ERROR);
+                }
+                if (!in_array($ta_subRequest['operator'], array('<', '>', '<=', '>=', '=', '!=', 'in', 'not_in'))) {
+                    trigger_error('Operateur inconnu : ' . $ta_subRequest['operator'], E_USER_ERROR);
+                }
+                if (!array_key_exists('subRequests',$arg) || !is_array($arg['subRequests']) || !array_key_exists($ta_subRequest['subRequest'],$arg['subRequests'])) {
+                    trigger_error('Sous-requête inconnue', E_USER_ERROR);
+                }
+
+                $this->setTableName($ta_subRequest['fromTable']);
+                $ta_where[] = $ta_subRequest['table'] . '.' . $ta_subRequest['field'] . ' ' . $ta_subRequest['operator'] . ' (' . $this->contruct_request($arg['subRequests'][$ta_subRequest['subRequest']],true) . ')';
+            }
+        }
+
         // Séquencement des clauses WHERE
         $count = 0;
         if (count($ta_where)) {
-            $requete .= ' WHERE ';
+            $request .= ' WHERE ';
             if (!isset($arg['sequence']) || !strlen($arg['sequence'])) {
                 foreach ($ta_where as $where) {
-                    if ($count++) { $requete .= ' AND '; }
-                    $requete .= $where;
+                    if ($count++) { $request .= ' AND '; }
+                    $request .= $where;
                 }
             } else {
                 $chaine_where = $arg['sequence'];
@@ -791,13 +878,35 @@ abstract class Manager {
                     $count++;
                     $chaine_where = preg_replace('#WHERE' . $count . '\b#', $where, $chaine_where);
                 }
-                $requete .= $chaine_where;
+                $request .= $chaine_where;
             }
         }
 
         // afterWhere
         if (array_key_exists('afterWhere',$arg)) {
-            $requete .= ' ' . $arg['afterWhere'] . ' ';
+            $request .= ' ' . $arg['afterWhere'] . ' ';
+        }
+
+        // Group by
+        if (array_key_exists('groupBy',$arg) && is_array($arg['groupBy']) && count($arg['groupBy'])) {
+            $request .= ' GROUP BY ';
+            $count = 0;
+            foreach ($arg['groupBy'] as $ta_groupBy) {
+                if (!array_key_exists($ta_groupBy['table'],$ta_tables)) {
+                    $table = preg_replace('/ /','',ucwords(preg_replace('/_/',' ',$ta_groupBy['table'])));
+                    $classe = 'src\manager\\' . $table.'Manager';
+                    //$classe = 'src\manager\\' . ucfirst($ta_groupBy['table']).'Manager';
+                    $obj = new $classe($this->db);
+                    $obj->recordFields();
+                    $ta_tables = $this->fieldsList();
+                    unset($obj);
+                }
+                if (!array_key_exists($ta_groupBy['field'],$ta_tables[$ta_groupBy['table']])) {
+                    trigger_error('Le champ : ' . $ta_groupBy['field'] . ' est introuvable dans la table : ' . $ta_groupBy['table'],E_USER_ERROR);
+                }
+                if ($count++) { $request .= ', '; }
+                $request .= $ta_groupBy['table'] . '.' . $ta_groupBy['field'];
+            }
         }
 
         if (!$flag_count) {
@@ -824,10 +933,10 @@ abstract class Manager {
                         if (!array_key_exists($ta_sort['field'],$ta_tables[$ta_sort['table']])) {
                             trigger_error('Le champ : ' . $ta_sort['field'] . ' est introuvable dans la table : ' . $ta_sort['table'],E_USER_ERROR);
                         }
-                        if ($count++) { $requete .= ', '; } else { $requete .= ' ORDER BY '; }
-                        $requete .= $ta_sort['table'] . '.' . $ta_sort['field'];
-                        if (isset($ta_sort['reverse']) && $ta_sort['reverse']) {
-                            $requete .= ' DESC';
+                        if ($count++) { $request .= ', '; } else { $request .= ' ORDER BY '; }
+                        $request .= $ta_sort['table'] . '.' . $ta_sort['field'];
+                        if ($ta_sort['reverse']) {
+                            $request .= ' DESC';
                         }
                     }
                 }
@@ -848,30 +957,46 @@ abstract class Manager {
             }
 
             if ($arg['limit']) {
-                $requete .= ' LIMIT ' . (int) $arg['limit'];
+                $request .= ' LIMIT ' . (int) $arg['limit'];
             }
 
             if ($arg['start']) {
-                $requete .= ' OFFSET ' . (int) $arg['start'];
+                $request .= ' OFFSET ' . (int) $arg['start'];
             }
         }
-        
+
         if ($flag_count) {
-            $requete = 'SELECT COUNT(1) FROM (' . addslashes($requete) . ') x';
+            $request = 'SELECT COUNT(1) FROM (' . addslashes($request) . ') x';
         }
+
+        $this->_ta_request_tables = array_merge($ta_tables,$this->_ta_request_tables);
+
+        return $request;
+    }
+
+    public function search(array $arg = array()) {
+        $return = array();
+        
+        // Par défaut, on retourne un tableau d'ID, sauf si des champs sont demandés
+        $flag_return_id = true;
+        if (array_key_exists('fields',$arg) && is_array($arg['fields']) && count($arg['fields'])) {
+            $flag_return_id = false;
+        }
+
+        $request = $this->contruct_request($arg, false);
         
         if ($this->debug()) {
-            $this->setDebugTxt($requete);
+            $this->setDebugTxt($request);
         }
-        $query = $this->db->pdo()->prepare($requete);
+        $query = $this->db->pdo()->prepare($request);
         if ($query === false) {
-            $this->setErrorTxt('Erreur dans search():prepare() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete);
+            $this->setErrorTxt('Erreur dans search():prepare() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $request);
             return false;
         }
 
         // Bind
-        foreach ($ta_bind as $key=>$infos_bind) {
-            $type = $ta_tables[$infos_bind['table']][$infos_bind['field']]['Type'];
+        foreach ($this->_ta_bind as $key=>$infos_bind) {
+            $type = $this->_ta_request_tables[$infos_bind['table']][$infos_bind['field']]['Type'];
             if ($this->debug()) {
                 $this->setDebugTxt('bind:' . $key . ' = ' . $infos_bind['value'] . ' (' . $type . ')');
             }
@@ -880,11 +1005,11 @@ abstract class Manager {
         
         $query->execute();
         if ($query === false) {
-            $this->setErrorTxt('Erreur dans search():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete);
+            $this->setErrorTxt('Erreur dans search():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $request);
             return false;
         }
 
-        if ($flag_count) {
+        if (isset($arg['special']) && $arg['special'] == 'count') {
             $results = $query->fetchColumn();
             $this->setNbResults($results);
             return $this->nbResults();
