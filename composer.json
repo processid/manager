@@ -4,7 +4,8 @@
     "require": {
         "php": ">=5.4",
         "processid/encrypt": "1.*",
-        "processid/traits": "1.*"
+        "processid/traits": "1.*",
+        "ext-pdo": "*"
     },
     "autoload": {
         "psr-4": {
