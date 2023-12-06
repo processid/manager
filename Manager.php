@@ -85,6 +85,7 @@ SEARCH:
 //      Par exemple : '((WHERE1 AND WHERE2) OR (WHERE3 AND WHERE4))' Les clauses Where sont numérotées de 1 à n et sont dans l'ordre du tableau 'search'. Si 'sequence' est fourni, il faut y renseigner toutes les clauses 'search' du WHERE.
 //      'sequence' ne doit comporter que les chaînes et caractères suivants en plus des WHEREn : '(', ')', ' ', 'OR', 'AND'
 // 'sort' => tableau de tableaux : 'table'=><Nom de la table>, 'field'=><Nom du champ>, 'reverse'=><true | false>)
+// Si 'reverse' n'est pas précisé, il est considéré comme false
 
 // exemple de recherche
 $arg = array('start'=>0,'limit'=>0,'fields'=>array(),'search'=>array(),'sort'=>array());
@@ -102,6 +103,10 @@ Le buffer de débogage est vidé lors de sa lecture : $this->debugTxt(), ou lors
 
 */
 namespace processid\manager;
+
+/**
+ * @version 2.1.0
+ */
 
 abstract class Manager {
     protected $db;
@@ -979,7 +984,7 @@ abstract class Manager {
 
     public function search(array $arg = array()) {
         $return = array();
-        
+
         // Par défaut, on retourne un tableau d'ID, sauf si des champs sont demandés
         $flag_return_id = true;
         if (array_key_exists('fields',$arg) && is_array($arg['fields']) && count($arg['fields'])) {
@@ -987,7 +992,7 @@ abstract class Manager {
         }
 
         $request = $this->contruct_request($arg, false);
-        
+
         if ($this->debug()) {
             $this->setDebugTxt($request);
         }

@@ -9,9 +9,9 @@ Ajoutez à votre fichier `composer.json` dans la section `require`, `"processid/
 Voici un exemple de fichier `composer.json` avec uniquement l'usage du Manager.
 ```json
 {
-  "require": {
-    "processid/manager": "2.1.0"
-  }
+    "require": {
+        "processid/manager": "2.1.0"
+    }
 }
 ```
 
