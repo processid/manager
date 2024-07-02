@@ -29,7 +29,10 @@
     use Exception;
     use \PDO;
     use \processid\encrypt\EncryptOpenSSL;
-
+    
+    /**
+     * @version 2.1.4
+     */
     class DbConnect {
 
         use \processid\traits\Hydrate;
@@ -123,9 +126,9 @@
 
         function connect() {
             try {
-                $dsn = $this->_type . ':host=' . $this->_host . ';dbname=' . $this->_database . ';charset=utf8';
+                $dsn = $this->_type . ':host=' . $this->_host . ';dbname=' . $this->_database . ';charset=utf8mb4';
                 $options = array(
-                    PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
+                    PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci',
                 );
 
                 $this->_pdo = new PDO($dsn, $this->_user, $this->_pass, $options);

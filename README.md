@@ -10,7 +10,7 @@ Voici un exemple de fichier `composer.json` avec uniquement l'usage du Manager.
 ```json
 {
     "require": {
-        "processid/manager": "2.1.3"
+        "processid/manager": "2.1.4"
     }
 }
 ```

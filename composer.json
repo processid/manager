@@ -1,6 +1,7 @@
 {
     "name": "processid/manager",
     "description": "Database management",
+    "version": "2.1.4",
     "require": {
         "php": ">=5.4",
         "processid/encrypt": "1.*",
