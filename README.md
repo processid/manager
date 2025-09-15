@@ -10,7 +10,7 @@ Voici un exemple de fichier `composer.json` avec uniquement l'usage du Manager.
 ```json
 {
     "require": {
-        "processid/manager": "2.1.4"
+        "processid/manager": "2.2.0"
     }
 }
 ```
@@ -29,11 +29,11 @@ Voici un exemple de classe fille de `Manager.php` :
         // Il est possible d'utiliser des colonnes chiffrées
         $this->setEncryptedFields(['nom'=>true, 'email'=>true, 'tel'=>true, 'siret'=>true]);
 
-        // Si malgrè le chiffrement, certains champs doivent rester triables
+        // Si malgré le chiffrement, certains champs doivent rester triables
         // il faut utiliser le daemon pour renseigner les colonnes de tri
         $this->setEncryptedFieldsSortable(['nom'=>true, 'email'=>true]);
         
-        public function __construct(\ProcessID\Manager\DbConnect $db) {
+        public function __construct(\ProcessID\Manager\DbConnect $db; ['charset' = 'utf8mb4']) {
             $this->setDb($db)
             $this->setTableName('clients'); // Nom de la table
             $this->setPrimaryKey('IDclients'); // Nom du champ ID de la table

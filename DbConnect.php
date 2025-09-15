@@ -31,7 +31,7 @@
     use \processid\encrypt\EncryptOpenSSL;
     
     /**
-     * @version 2.1.4
+     * @version 2.2.0
      */
     class DbConnect {
 
@@ -47,10 +47,12 @@
         private $_key_aes256;
         private $_key_hash512;
         private $_method;
+        
+        const DEFAULT_CHARSET = 'utf8';
 
-        public function __construct($donnees) {
+        public function __construct($donnees, array $options_connexion = []) {
             $this->hydrate($donnees);
-            $this->connect();
+            $this->connect($options_connexion);
             $this->encrypt();
         }
 
@@ -124,11 +126,12 @@
             return $this->_dbCrypt;
         }
 
-        function connect() {
+        function connect(array $options = []) {
+            $charset = isset($options['charset']) ? $options['charset'] : self::DEFAULT_CHARSET;
             try {
-                $dsn = $this->_type . ':host=' . $this->_host . ';dbname=' . $this->_database . ';charset=utf8mb4';
+                $dsn = $this->_type . ':host=' . $this->_host . ';dbname=' . $this->_database . ';charset=' . $charset;
                 $options = array(
-                    PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci',
+                    PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES ' . $charset . ' COLLATE ' . $charset . '_unicode_ci',
                 );
 
                 $this->_pdo = new PDO($dsn, $this->_user, $this->_pass, $options);
