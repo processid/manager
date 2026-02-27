@@ -1,0 +1,12 @@
+{
+  "test": {
+    "type": "mysql",
+    "host": "127.0.0.1",
+    "user": "XXXXX",
+    "pass": "XXXXX",
+    "database": "XXXXX",
+    "key_aes256": "XXXXX",
+    "key_hash512": "XXXXX",
+    "method": "aes-256-cbc"
+  }
+}
