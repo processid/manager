@@ -1,6 +1,6 @@
 <?php
 
-    namespace include\common\lib\vendor\processid\manager\exception;
+    namespace processid\manager\exception;
     
     use Exception;
     

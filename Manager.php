@@ -281,7 +281,6 @@
                 }
                 
                 $this->_bindParamsStmt($stmt);
-                $stmt->execute();
                 
                 if (false === $stmt->execute()) {
                     $this->setErrorTxt('Erreur dans search():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $request);
@@ -1777,7 +1776,7 @@
                     $values[] = ':' . $infos_field['Field'];
                 }
             }
-            $requete = $ignore ? 'INSERT IGNORE INTO ' : 'INSERT INTO ' . $this->tableName();
+            $requete = ($ignore ? 'INSERT IGNORE INTO ' : 'INSERT INTO ') . $this->tableName();
             $requete .= ' (' . implode(',', $fields) . ') VALUES (' . implode(',', $values) . ')';
             $this->setDebugTxt($requete, true);
             

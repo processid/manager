@@ -22,14 +22,14 @@
         /** @var array|string fields de l'arg, sera buildé grâce à la fonction fields. */
         private array|string $fields = '*';
         /** @var string[][] va stocker les fields qui ont déjà été validés pour éviter des doublons de validation, au format [table] = [field1, fields2] */
-        private array $validesFields;
+        private array $validesFields = [];
         private array $searches = [];
         private array $sorts = [];
         private int $start = 0;
         private int $limit = 0;
         private string $sequence = '';
         /** @var string[] Gestion des conditions groupés dans la séquence. */
-        private array $groupStack;
+        private array $groupStack = [];
         private string $beforeWhere = '';
         private string $afterWhere = '';
         private string $special = '';
@@ -192,7 +192,7 @@
          *
          * @return QueryBuilder
          */
-        public function limit(int $limit = 0, int $start = 0): queryBuilder
+        public function limit(int $limit = 0, int $start = 0): QueryBuilder
         {
             if ($limit < 0) {
                 throw new InvalidArgumentException('La limite doit être un entier positif.');
@@ -503,7 +503,7 @@
         /**
          * @param string $afterWhere
          */
-        public function setAfterWhere(string $afterWhere): queryBuilder
+        public function setAfterWhere(string $afterWhere): QueryBuilder
         {
             $this->afterWhere = $afterWhere;
             
