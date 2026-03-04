@@ -328,7 +328,7 @@ abstract class Manager {
                     }
                     
                     if ($this->debug()) {
-                        $this->setDebugTxt('bind:' . $infos_field['Field'] . ' = ' . $value . ' (' . $infos_field['Type'] . ')');
+                        $this->setDebugTxt('bind:' . $infos_field['Field'] . ' = ' . var_export($value, true) . ' (' . $infos_field['Type'] . ', type=' . gettype($value) . ')');
                     }
                     
                     $this->bind_query($query, ':' . $infos_field['Field'], $infos_field['Type'], $value);
@@ -339,7 +339,7 @@ abstract class Manager {
         // Ajout du champ ID
         $field = $this->tableIdField();
         if ($this->debug()) {
-            $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $object->$field() . ' (INTEGER)');
+            $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . var_export($object->$field(), true) . ' (INTEGER, type=' . gettype($object->$field()) . ')');
         }
         $query->bindValue(':'.$this->tableIdField(), $object->$field(), \PDO::PARAM_INT);
 
@@ -444,7 +444,7 @@ abstract class Manager {
                 }
                 
                 if ($this->debug()) {
-                    $this->setDebugTxt('bind:' . $infos_field['Field'] . ' = ' . $value . ' (' . $infos_field['Type'] . ')');
+                    $this->setDebugTxt('bind:' . $infos_field['Field'] . ' = ' . var_export($value, true) . ' (' . $infos_field['Type'] . ', type=' . gettype($value) . ')');
                 }
                 
                 $this->bind_query($query, ':' . $infos_field['Field'], $infos_field['Type'], $value);
@@ -502,7 +502,7 @@ abstract class Manager {
             }
             
             if ($this->debug()) {
-                $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $ID . ' (INTEGER)');
+                $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . var_export($ID, true) . ' (INTEGER, type=' . gettype($ID) . ')');
             }
             $query->bindValue(':'.$this->tableIdField(), $ID, \PDO::PARAM_INT);
             if ($query === false) {
@@ -605,7 +605,7 @@ abstract class Manager {
             }
             
             if ($this->debug()) {
-                $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $ID . ' (INTEGER');
+                $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . var_export($ID, true) . ' (INTEGER, type=' . gettype($ID) . ')');
             }
             $query->bindValue(':'.$this->tableIdField(), $ID, \PDO::PARAM_INT);
 
@@ -1009,7 +1009,7 @@ abstract class Manager {
         foreach ($this->_ta_bind as $key=>$infos_bind) {
             $type = $this->_ta_request_tables[$infos_bind['table']][$infos_bind['field']]['Type'];
             if ($this->debug()) {
-                $this->setDebugTxt('bind:' . $key . ' = ' . $infos_bind['value'] . ' (' . $type . ')');
+                $this->setDebugTxt('bind:' . $key . ' = ' . var_export($infos_bind['value'], true) . ' (' . $type . ', type=' . gettype($infos_bind['value']) . ')');
             }
             $this->bind_query($query, ':bind' . $key, $type, $infos_bind['value']);
         }
