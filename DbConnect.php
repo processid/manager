@@ -24,19 +24,18 @@
     // - Une instance de \processid\encrypt\EncryptOpenSSL : $this->dbCrypt() qui apporte encrypt_string() et decrypt_string() pré-configurés avec key_aes256 et key_hash512
 
     */
-    namespace processid\manager;
-
-    use Exception;
-    use \PDO;
-    use \processid\encrypt\EncryptOpenSSL;
     
-    /**
-     * @version 2.2.0
-     */
-    class DbConnect {
-
-        use \processid\traits\Hydrate;
-
+    namespace processid\manager;
+    
+    use Exception;
+    use PDO;
+    use processid\encrypt\EncryptOpenSSL;
+    use processid\traits\Hydrate;
+    
+    class DbConnect
+    {
+        use Hydrate;
+        
         private $_type;
         private $_host;
         private $_database;
@@ -48,96 +47,111 @@
         private $_key_hash512;
         private $_method;
         
-        const DEFAULT_CHARSET = 'utf8';
-
-        public function __construct($donnees, array $options_connexion = []) {
+        public function __construct($donnees)
+        {
             $this->hydrate($donnees);
-            $this->connect($options_connexion);
+            $this->connect();
             $this->encrypt();
         }
-
-        function type() { return $this->_type; }
-
-        function setType($type) {
+        
+        public function type(): string
+        {
+            return $this->_type;
+        }
+        
+        public function setType($type): void
+        {
             if ($type == 'mysql') {
                 $this->_type = $type;
             }
         }
-
-        function setHost($host) {
+        
+        public function setHost($host): void
+        {
             if (is_string($host)) {
                 $this->_host = $host;
             }
         }
-
-        function setDatabase($database) {
+        
+        public function setDatabase($database): void
+        {
             if (is_string($database)) {
                 $this->_database = $database;
             }
         }
-
-        function setUser($user) {
+        
+        public function setUser($user): void
+        {
             if (is_string($user)) {
                 $this->_user = $user;
             }
         }
-
-        function setPass($pass) {
+        
+        public function setPass($pass): void
+        {
             if (is_string($pass)) {
                 $this->_pass = $pass;
             }
         }
-
-        function setKey_aes256($key_aes256) {
+        
+        public function setKey_aes256($key_aes256): void
+        {
             if (is_string($key_aes256)) {
                 $this->_key_aes256 = $key_aes256;
             }
         }
-
-        function setKey_hash512($key_hash512) {
+        
+        public function setKey_hash512($key_hash512): void
+        {
             if (is_string($key_hash512)) {
                 $this->_key_hash512 = $key_hash512;
             }
         }
-
-        function setMethod($method) {
+        
+        public function setMethod($method): void
+        {
             if (is_string($method)) {
                 $this->_method = $method;
             }
         }
-
-        private function key_aes256() {
+        
+        private function key_aes256(): string
+        {
             return $this->_key_aes256;
         }
-
-        private function key_hash512() {
+        
+        private function key_hash512(): string
+        {
             return $this->_key_hash512;
         }
-
-        private function method() {
+        
+        private function method(): string
+        {
             return $this->_method;
         }
-
-        function pdo() {
+        
+        function pdo(): PDO
+        {
             return $this->_pdo;
         }
-
-        function dbCrypt() {
+        
+        function dbCrypt(): EncryptOpenSSL
+        {
             return $this->_dbCrypt;
         }
-
-        function connect(array $options = []) {
-            $charset = isset($options['charset']) ? $options['charset'] : self::DEFAULT_CHARSET;
+        
+        function connect(): void
+        {
             try {
-                $dsn = $this->_type . ':host=' . $this->_host . ';dbname=' . $this->_database . ';charset=' . $charset;
+                $dsn = $this->_type . ':host=' . $this->_host . ';dbname=' . $this->_database . ';charset=utf8';
                 $options = array(
-                    PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES ' . $charset . ' COLLATE ' . $charset . '_unicode_ci',
+                    PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
                 );
-
+                
                 $this->_pdo = new PDO($dsn, $this->_user, $this->_pass, $options);
                 $this->_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
                 $this->_pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-
+                
             } catch (Exception $e) {
                 die('Erreur : ' . $e->getMessage());
             }
@@ -145,29 +159,35 @@
         
         /**
          * Déconnexion de la base de données
-         * @version 1.9.0
          * @return void
+         * @version 1.9.0
          */
-        public function deconnect() {
+        public function deconnect(): void
+        {
             $this->_pdo = null;
         }
         
         /**
          * Vérifie si la connexion est établie
-         * @version 1.9.0
          * @return bool true si la connexion est établie, false sinon
+         * @version 1.9.0
          */
-        public function isConnected() {
+        public function isConnected(): bool
+        {
             if ($this->_pdo) {
                 return true;
             }
             return false;
         }
-
-        function encrypt() {
+        
+        /**
+         * @return void
+         */
+        function encrypt(): void
+        {
             if (strlen($this->key_aes256())) {
                 if (strlen($this->key_hash512()) && strlen($this->method())) {
-                    $this->_dbCrypt = new EncryptOpenSSL($this->key_aes256(),$this->key_hash512(),$this->method());
+                    $this->_dbCrypt = new EncryptOpenSSL($this->key_aes256(), $this->key_hash512(), $this->method());
                 }
             }
         }
