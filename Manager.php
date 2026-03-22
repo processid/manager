@@ -1405,6 +1405,8 @@
                                 $IDs .= ':bind' . $this->_count_bind++ . ',';
                             }
                             $IDs = rtrim($IDs, ",");
+                        } else {
+                            trigger_error('Attention, la valeur pour in_array ne devrait pas être vide : '.$ta_search['table'] . '.' . $ta_search['field'], E_USER_ERROR);
                         }
                         $not = '';
                         if ($ta_search['operator'] == 'not_in_array') {
