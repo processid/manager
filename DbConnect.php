@@ -23,12 +23,16 @@
     // - Une instance de PDO : $this->pdo()
     // - Une instance de \processid\encrypt\EncryptOpenSSL : $this->dbCrypt() qui apporte encrypt_string() et decrypt_string() pré-configurés avec key_aes256 et key_hash512
 
-    */   
+    */
     namespace processid\manager;
 
+    use Exception;
     use \PDO;
     use \processid\encrypt\EncryptOpenSSL;
-
+    
+    /**
+     * @version 2.2.0
+     */
     class DbConnect {
 
         use \processid\traits\Hydrate;
@@ -43,10 +47,12 @@
         private $_key_aes256;
         private $_key_hash512;
         private $_method;
+        
+        const DEFAULT_CHARSET = 'utf8';
 
-        public function __construct($donnees) {
+        public function __construct($donnees, array $options_connexion = []) {
             $this->hydrate($donnees);
-            $this->connect();
+            $this->connect($options_connexion);
             $this->encrypt();
         }
 
@@ -120,11 +126,12 @@
             return $this->_dbCrypt;
         }
 
-        function connect() {
+        function connect(array $options = []) {
+            $charset = isset($options['charset']) ? $options['charset'] : self::DEFAULT_CHARSET;
             try {
-                $dsn = $this->_type . ':host=' . $this->_host . ';dbname=' . $this->_database . ';charset=utf8';
+                $dsn = $this->_type . ':host=' . $this->_host . ';dbname=' . $this->_database . ';charset=' . $charset;
                 $options = array(
-                    PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
+                    PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES ' . $charset . ' COLLATE ' . $charset . '_unicode_ci',
                 );
 
                 $this->_pdo = new PDO($dsn, $this->_user, $this->_pass, $options);
@@ -135,6 +142,27 @@
                 die('Erreur : ' . $e->getMessage());
             }
         }
+        
+        /**
+         * Déconnexion de la base de données
+         * @version 1.9.0
+         * @return void
+         */
+        public function deconnect() {
+            $this->_pdo = null;
+        }
+        
+        /**
+         * Vérifie si la connexion est établie
+         * @version 1.9.0
+         * @return bool true si la connexion est établie, false sinon
+         */
+        public function isConnected() {
+            if ($this->_pdo) {
+                return true;
+            }
+            return false;
+        }
 
         function encrypt() {
             if (strlen($this->key_aes256())) {
@@ -144,4 +172,3 @@
             }
         }
     }
-?>
