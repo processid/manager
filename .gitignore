@@ -1,0 +1,12 @@
+# Configuration locale (ne JAMAIS versionner — contient des secrets)
+unit/config/DbConfiguration.json
+
+# Composer
+/vendor/
+
+# IDE
+/.idea/
+/.vscode/
+
+# Crash dumps
+*.stackdump
