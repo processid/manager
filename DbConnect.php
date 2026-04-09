@@ -140,12 +140,12 @@
             return $this->_dbCrypt;
         }
         
-        function connect(): void
+        function connect(string $charset = 'utf8'): void
         {
             try {
-                $dsn = $this->_type . ':host=' . $this->_host . ';dbname=' . $this->_database . ';charset=utf8';
+                $dsn = $this->_type . ':host=' . $this->_host . ';dbname=' . $this->_database . ';charset=' . $charset;
                 $options = array(
-                    PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
+                    PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES ' . $charset . ' COLLATE ' . $charset . '_unicode_ci',
                 );
                 
                 $this->_pdo = new PDO($dsn, $this->_user, $this->_pass, $options);

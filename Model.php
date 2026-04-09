@@ -181,21 +181,6 @@
                             }
                             break;
                         
-                        case 'Date':
-                            if (!($value instanceof DateTime)) {
-                                try {
-                                    if (is_numeric($value) && (int)$value == $value && $value >= 0) {
-                                        $value = (new DateTime())->setTimestamp((int)$value);
-                                    } else {
-                                        $value = new DateTime($value);
-                                    }
-                                } catch (Exception) {
-                                    throw new InvalidArgumentException("La valeur pour {$name} n'est pas une date valide.");
-                                }
-                            }
-                            $value = $value->format('Y-m-d'); // Convertir en date
-                            break;
-                        
                         case 'array':
                             if (!(is_array($value))) {
                                 $value = json_decode($value, true);
