@@ -3,12 +3,13 @@
     namespace processid\manager;
     
     use Exception;
-    use include\common\lib\vendor\processid\manager\exception\ManagerNotFoundException;
     use InvalidArgumentException;
     use LogicException;
     use processid\manager\enum\QueryFunction;
     use processid\manager\enum\QueryOperator;
     use processid\manager\enum\QuerySequenceType;
+    use processid\manager\exception\ManagerNotFoundException;
+    use Throwable;
     
     /**
      * Class QueryBuilder
@@ -559,20 +560,24 @@
             if (is_object($table)) {
                 if (!($table instanceof Manager)) {
                     // Si c'est déjà un manager, on le retourne tel quel
-                    throw new ManagerNotFoundException("La classe '$table' n'est pas un Manager valide.");
+                    throw new ManagerNotFoundException("La classe '" . get_class($table) . "' n'est pas un Manager valide.");
                 }
                 
                 return $table;
             }
             
-            if (class_exists($table)) {
-                // Si c'est une classe valide, on vérifie si c'est un Manager
-                $manager = new $table();
-                if (!$manager instanceof Manager) {
-                    throw new ManagerNotFoundException("La classe '$table' n'est pas un Manager valide.");
+            try {
+                if (class_exists($table)) {
+                    // Si c'est une classe valide, on vérifie si c'est un Manager
+                    $manager = new $table();
+                    if (!$manager instanceof Manager) {
+                        throw new ManagerNotFoundException("La classe '$table' n'est pas un Manager valide.");
+                    }
+                    
+                    return $manager;
                 }
-                
-                return $manager;
+            } catch (Throwable) {
+                throw new ManagerNotFoundException("La classe '$table' n'est pas un Manager valide.");
             }
             
             if (str_contains($table, '\\') || preg_match('/^[A-Z]/', $table)) {

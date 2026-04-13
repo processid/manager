@@ -12,8 +12,10 @@
     use processid\manager\attributes\ID;
     use processid\manager\attributes\Table;
     use processid\manager\enum\QueryOperator;
+    use processid\manager\exception\ManagerNotFoundException;
     use ReflectionClass;
     use RuntimeException;
+    use Throwable;
     
     /**
      * Classe résponsable de l'interaction avec la base de données.
@@ -41,7 +43,7 @@
         protected array $_encryptedFields = [];
         protected $crypt;
         /** @var string|null Contenu texte erreur. */
-        protected ?string $errorTxt;
+        protected ?string $errorTxt = null;
         /** @var string Contenu texte du debug. */
         protected string $debugTxt = '';
         /** @var array Liste des champs cryptés qui doivent rester triable. */
@@ -95,9 +97,9 @@
         /**
          * Récupère le message d'erreur s'il y en a lors d'une intéraction avec la base de données.
          *
-         * @return string
+         * @return ?string
          */
-        public function errorTxt(): string
+        public function errorTxt(): ?string
         {
             return $this->errorTxt;
         }
@@ -272,7 +274,7 @@
                     }, $fieldsTable);
                 }
                 
-                $request = $this->contruct_request($arg, false);
+                $request = $this->contruct_request($arg);
                 $this->setDebugTxt($request, true);
                 
                 if (false === ($stmt = $this->db->pdo()->prepare($request))) {
@@ -314,7 +316,6 @@
                 }
                 
                 $this->_bindParamsStmt($stmt);
-                $stmt->execute();
                 
                 if (false === $stmt->execute()) {
                     $this->setErrorTxt('Erreur dans countBy():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $request);
@@ -1203,6 +1204,8 @@
          * @param bool $subRequest Indique si c'est une sous requête et dans ce cas ne pas réinitialiser les variables de construction de requête.
          *
          * @return string Requête préparée SQL.
+         *
+         * @throws ManagerNotFoundException
          */
         private function contruct_request(array $arg = [], bool $subRequest = false): string
         {
@@ -1229,12 +1232,8 @@
                     $fields .= ($fields != '' ? ',' : '');
                     
                     if (!array_key_exists($ta_field['table'], $ta_tables)) {
-                        $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_field['table'])));
-                        $classe = 'src\manager\\' . $table . 'Manager';
-                        $obj = new $classe($this->db);
-                        $obj->recordFields();
+                        $this->recordTableField($ta_field['table']);
                         $ta_tables = $this->fieldsList();
-                        unset($obj);
                     }
                     if ($ta_field['field'] == '*') {
                         $fields .= '*';
@@ -1265,28 +1264,16 @@
             if (array_key_exists('join', $arg) && is_array($arg['join']) && count($arg['join'])) {
                 foreach ($arg['join'] as $ta_join) {
                     if (!array_key_exists($ta_join['table'], $ta_tables)) {
-                        $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_join['table'])));
-                        $classe = 'src\manager\\' . $table . 'Manager';
-                        $obj = new $classe($this->db);
-                        $obj->recordFields();
+                        $this->recordTableField($ta_join['table']);
                         $ta_tables = $this->fieldsList();
-                        unset($obj);
                     }
                     if (!array_key_exists($ta_join['on']['table1'], $ta_tables)) {
-                        $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_join['on']['table1'])));
-                        $classe = 'src\manager\\' . $table . 'Manager';
-                        $obj = new $classe($this->db);
-                        $obj->recordFields();
+                        $this->recordTableField($ta_join['on']['table1']);
                         $ta_tables = $this->fieldsList();
-                        unset($obj);
                     }
                     if (!array_key_exists($ta_join['on']['table2'], $ta_tables)) {
-                        $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_join['on']['table2'])));
-                        $classe = 'src\manager\\' . $table . 'Manager';
-                        $obj = new $classe($this->db);
-                        $obj->recordFields();
+                        $this->recordTableField($ta_join['on']['table2']);
                         $ta_tables = $this->fieldsList();
-                        unset($obj);
                     }
                     if (!array_key_exists($ta_join['on']['table1'], $ta_tables)) {
                         trigger_error('La table : ' . $ta_join['on']['table1'] . ' est introuvable', E_USER_ERROR);
@@ -1323,12 +1310,8 @@
             $ta_where = [];
             foreach ($arg['search'] as $ta_search) {
                 if (!array_key_exists($ta_search['table'], $ta_tables)) {
-                    $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_search['table'])));
-                    $classe = 'src\manager\\' . $table . 'Manager';
-                    $obj = new $classe();
-                    $obj->recordFields();
+                    $this->recordTableField($ta_search['table']);
                     $ta_tables = $this->fieldsList();
-                    unset($obj);
                 }
                 if (!array_key_exists($ta_search['field'], $ta_tables[$ta_search['table']])) {
                     trigger_error('Le champ : ' . $ta_search['field'] . ' est introuvable dans la table : ' . $ta_search['table'], E_USER_ERROR);
@@ -1466,41 +1449,6 @@
                         $maWhere .= ')';
                         $ta_where[] = $maWhere;
                     }
-                } elseif ($ta_search['operator'] == QueryOperator::FULLTEXT_MATCH_AGAINST->value || $ta_search['operator'] == QueryOperator::FULLTEXT_MATCH_AGAINST_BOOLEAN->value) {
-                    $this->_ta_bind[$this->_count_bind] = [];
-                    $this->_ta_bind[$this->_count_bind]['table'] = $ta_search['table'];
-                    if (preg_match('#^id[0-9]{1,}$#', $ta_search['value'])) {
-                        $this->_ta_bind[$this->_count_bind]['field'] = $this->tableIdField();
-                        $this->_ta_bind[$this->_count_bind]['value'] = (int)trim(substr($ta_search['value'], 2));
-                        $ta_where[] = $ta_search['table'] . '.' . $this->tableIdField() . '=:bind' . $this->_count_bind++;
-                    } else {
-                        $search_value = trim($ta_search['value']);
-                        
-                        // Suppression des caractères spéciaux
-                        $processed_value = preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $search_value);
-                        // Normalisation des espaces multiples
-                        $processed_value = preg_replace("/[[:space:]]{2,}/u", " ", $processed_value);
-                        
-                        $arrayRec = explode(" ", $processed_value);
-                        $match = '';
-                        
-                        foreach ($arrayRec as $mot) {
-                            $mot = trim($mot);
-                            if (empty($mot)) {
-                                continue;
-                            }
-                            
-                            $match .= " +$mot*";
-                        }
-                        $this->_ta_bind[$this->_count_bind]['field'] = $ta_search['field'];
-                        $this->_ta_bind[$this->_count_bind]['value'] = $match;
-                        $maWhere = "MATCH({$ta_search['table']}.{$ta_search['field']}) AGAINST (:bind" . $this->_count_bind++;
-                        if ($ta_search['operator'] == QueryOperator::FULLTEXT_MATCH_AGAINST_BOOLEAN->value) {
-                            $maWhere .= ' IN BOOLEAN MODE';
-                        }
-                        $maWhere .= ')';
-                        $ta_where[] = $maWhere;
-                    }
                 } else {
                     $this->_ta_bind[$this->_count_bind] = [];
                     $this->_ta_bind[$this->_count_bind]['table'] = $ta_search['table'];
@@ -1514,13 +1462,8 @@
             if (array_key_exists('subRequest', $arg) && is_array($arg['subRequest']) && count($arg['subRequest'])) {
                 foreach ($arg['subRequest'] as $ta_subRequest) {
                     if (!array_key_exists($ta_subRequest['table'], $ta_tables)) {
-                        $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_subRequest['table'])));
-                        $classe = 'src\manager\\' . $table . 'Manager';
-                        //$classe = 'src\manager\\' . $ta_subRequest['table'].'Manager';
-                        $obj = new $classe();
-                        $obj->recordFields();
+                        $this->recordTableField($ta_subRequest['table']);
                         $ta_tables = $this->fieldsList();
-                        unset($obj);
                     }
                     if (!array_key_exists($ta_subRequest['field'], $ta_tables[$ta_subRequest['table']])) {
                         trigger_error('Le champ : ' . $ta_subRequest['field'] . ' est introuvable dans la table : ' . $ta_subRequest['table'], E_USER_ERROR);
@@ -1580,12 +1523,8 @@
                 $count = 0;
                 foreach ($arg['groupBy'] as $ta_groupBy) {
                     if (!array_key_exists($ta_groupBy['table'], $ta_tables)) {
-                        $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_groupBy['table'])));
-                        $classe = 'src\manager\\' . $table . 'Manager';
-                        $obj = new $classe();
-                        $obj->recordFields();
+                        $this->recordTableField($ta_groupBy['table']);
                         $ta_tables = $this->fieldsList();
-                        unset($obj);
                     }
                     if (!array_key_exists($ta_groupBy['field'], $ta_tables[$ta_groupBy['table']])) {
                         trigger_error('Le champ : ' . $ta_groupBy['field'] . ' est introuvable dans la table : ' . $ta_groupBy['table'], E_USER_ERROR);
@@ -1604,12 +1543,8 @@
                         $count = 0;
                         foreach ($arg['sort'] as $ta_sort) {
                             if (!array_key_exists($ta_sort['table'], $ta_tables)) {
-                                $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $ta_sort['table'])));
-                                $classe = 'src\manager\\' . $table . 'Manager';
-                                $obj = new $classe();
-                                $obj->recordFields();
+                                $this->recordTableField($ta_sort['table']);
                                 $ta_tables = $this->fieldsList();
-                                unset($obj);
                             }
                             
                             // Si le champ est chiffré et qu'il a une colonne de tri, elle est utilisée
@@ -1933,6 +1868,44 @@
             } finally {
                 $this->db = $previousDb;
             }
+        }
+        
+        /**
+         * Depuis un nom de table cherche un Manager puis renseigne la liste des champs de la table dans le Manager.
+         *
+         * @param string $table
+         *
+         * @return void
+         *
+         * @throws ManagerNotFoundException
+         */
+        private function recordTableField(string $table): void
+        {
+            $table = preg_replace('/ /', '', ucwords(preg_replace('/_/', ' ', $table)));
+            $classe = 'src\manager\\' . $table . 'Manager';
+            
+            try {
+                if (!class_exists($classe)) {
+                    throw new ManagerNotFoundException("La classe '$classe' n'est pas un Manager valide.");
+                }
+            } catch (Throwable) {
+                throw new ManagerNotFoundException("La classe '$classe' n'est pas un Manager valide.");
+            }
+            
+            $obj = new $classe();
+            
+            if (!$obj instanceof Manager) {
+                throw new ManagerNotFoundException("La classe '$classe' n'est pas un Manager valide.");
+            }
+            
+            // On vérifie si ça n'a pas encore été chargé
+            if (isset(self::$_fieldsList[$this->tableName()])) {
+                unset($obj);
+                return;
+            }
+            
+            $obj->recordFields();
+            unset($obj);
         }
     }
     

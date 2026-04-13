@@ -5,6 +5,7 @@
     // Require des fichiers requis
     require_once __DIR__ . '/TestUnit.php';
     
+    use Closure;
     use Exception;
     use LogicException;
     use processid\manager\ConnectionManager;
@@ -47,8 +48,10 @@
          *
          * @return void
          */
-        public function testRun(array $results, int $count, string $name): void
+        public function testRun(Closure $fct, int $count, string $name): void
         {
+            $results = $fct();
+            
             $this->assertCount($count, $results);
             $this->assertEquals($name, $results[0]->getName());
         }
@@ -85,41 +88,41 @@
             
             return [
                 'Single Condition' => [
-                    (new QueryBuilder(new UsersManager()))
+                    fn() => ((new QueryBuilder(new UsersManager()))
                         ->field('id')
                         ->field('name')
                         ->search('id', 1)
                         ->limit(10)
-                        ->run(),
+                        ->run()),
                     1,
                     'Alice'
                 ],
                 'Multiple Conditions' => [
-                    (new QueryBuilder(new UsersManager()))
+                    fn() => ((new QueryBuilder(new UsersManager()))
                         ->field('id')
                         ->field('name')
                         ->search('status', 'active')
                         ->search('email', '@example.com', QueryOperator::LIKE_BOTH)
                         ->sort('id', true)
                         ->limit(10)
-                        ->run(),
+                        ->run()),
                     2,
                     'Diana'
                 ],
                 'Limit and Pagination' => [
-                    (new QueryBuilder(new UsersManager()))
+                    fn() => ((new QueryBuilder(new UsersManager()))
                         ->field('id')
                         ->field('name')
                         ->search('status', 'active')
                         ->limit(1)
                         ->sort('id', true)
-                        ->run(),
+                        ->run()),
                     1,
                     'Diana'
                 ],
                 'Test With Complex Condition' => [
                     // SELECT id, name FROM users WHERE status = 'inactive' OR (name = 'Charlie' OR status = 'pending') ORDER BY id ASC
-                    (new QueryBuilder(new UsersManager()))
+                    fn() => (new QueryBuilder(new UsersManager()))
                         ->field('id')
                         ->field('name')
                         ->search('status', 'inactive')
