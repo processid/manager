@@ -43,7 +43,7 @@
         protected array $_encryptedFields = [];
         protected $crypt;
         /** @var string|null Contenu texte erreur. */
-        protected ?string $errorTxt;
+        protected ?string $errorTxt = null;
         /** @var string Contenu texte du debug. */
         protected string $debugTxt = '';
         /** @var array Liste des champs cryptés qui doivent rester triable. */
