@@ -1681,9 +1681,9 @@
          */
         private function _bind_query(PDOStatement $stmt, string $bind, string $type, null|string|array $value): void
         {
-            if (in_array($type, array('bigint', 'int', 'tinyint', 'smallint', 'mediumint', 'time', 'year'))) {
+            if (in_array($type, array('bigint', 'int', 'tinyint', 'smallint', 'mediumint', 'year'))) {
                 $stmt->bindValue($bind, is_null($value) ? $value : (int)$value, PDO::PARAM_INT);
-            } elseif (in_array($type, array('date', 'datetime', 'timestamp', 'char', 'varchar'))) {
+            } elseif (in_array($type, array('time', 'date', 'datetime', 'timestamp', 'char', 'varchar'))) {
                 $stmt->bindValue($bind, $value);
             } elseif ($type == 'enum') {
                 $stmt->bindValue($bind, $value);

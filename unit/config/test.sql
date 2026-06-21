@@ -27,9 +27,10 @@ CREATE TABLE orders_tests
 -- création de la table 'secrets_tests' pour les tests (champ chiffré)
 CREATE TABLE secrets_tests
 (
-    id     INT AUTO_INCREMENT PRIMARY KEY,
-    label  VARCHAR(255)  NOT NULL,
-    secret VARCHAR(1024) NULL
+    id       INT AUTO_INCREMENT PRIMARY KEY,
+    label    VARCHAR(255)  NOT NULL,
+    secret   VARCHAR(1024) NULL,
+    duration TIME          NULL
 );
 
 -- Insertion de données dans la table 'users_tests'

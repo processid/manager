@@ -34,6 +34,12 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/spec
   relecture (qui déchiffre systématiquement). `insertMultiple()` chiffre désormais ces champs
   comme `persist()`.
 
+#### Colonnes `TIME` corrompues par `persist()`
+
+- `_bind_query()` rangeait le type `time` avec les entiers et appliquait `(int)$value` : une
+  valeur `'12:30:00'` était stockée comme `12` secondes (`'00:00:12'`). Le type `time` est
+  désormais lié comme une chaîne (au même titre que `date`/`datetime`), donc inséré correctement.
+
 ### 🔧 Changements de comportement
 
 - **`persist()` (mise à jour)** : un champ non renseigné (`null`) n'est plus réécrit avec la
@@ -51,8 +57,9 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/spec
 ### ✅ Tests
 
 - Ajout de tests de non-régression : application des défauts (`DEFAULT 'pending'`,
-  `DEFAULT CURRENT_TIMESTAMP`) via `persist()` et `insertMultiple()`, et chiffrement
-  round-trip d'un champ `#[Encrypted]` via `insertMultiple()`.
+  `DEFAULT CURRENT_TIMESTAMP`) via `persist()` et `insertMultiple()`, chiffrement
+  round-trip d'un champ `#[Encrypted]` via `insertMultiple()`, et stockage correct
+  d'une colonne `TIME`.
 - Suite validée sous **MariaDB 10.3** (moteur où les bugs se manifestaient).
 
 #### composer.json

@@ -22,4 +22,7 @@
         #[Field('secret')]
         #[Encrypted]
         protected string $secret;
+
+        #[Field('duration')]
+        protected string $duration;
     }

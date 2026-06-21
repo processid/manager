@@ -362,6 +362,27 @@
         }
 
         /**
+         * persist() doit stocker correctement une colonne TIME.
+         *
+         * Régression : _bind_query() rangeait `time` avec les entiers et faisait (int)$value,
+         * donc '12:30:00' était stocké comme 12 secondes ('00:00:12').
+         *
+         * @covers \processid\manager\Manager::persist
+         *
+         * @return void
+         */
+        public function testPersistBindsTimeColumnCorrectly(): void
+        {
+            $manager = new SecretManager();
+            $secret = new Secret(['label' => 'timed', 'secret' => 's', 'duration' => '12:30:00']);
+            $manager->persist($secret);
+
+            $reloaded = $manager->findById($secret->getId());
+            $this->assertNotNull($reloaded, 'La ligne avec colonne TIME est introuvable.');
+            $this->assertEquals('12:30:00', $reloaded->getDuration(), 'La colonne TIME a été corrompue (cast en entier au lieu de la chaîne).');
+        }
+
+        /**
          * Modification d'une ligne avec la méthode persist.
          *
          * @covers \processid\manager\Manager::persist
