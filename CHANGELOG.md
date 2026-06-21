@@ -5,6 +5,50 @@ Tous les changements notables de ce projet seront documentés dans ce fichier.
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-06-21
+
+### 🐛 Corrigé
+
+#### Valeurs par défaut des colonnes non appliquées
+
+- **`persist()` (création et mise à jour)** : lorsqu'une propriété de modèle n'était pas
+  renseignée, le Manager réutilisait la valeur lue dans
+  `INFORMATION_SCHEMA.COLUMNS.COLUMN_DEFAULT`. Or, sous **MariaDB (≥ 10.2)**, cette colonne
+  contient la *représentation SQL* du défaut (`NULL`, `'pending'`, `''`, … guillemets inclus)
+  et non la valeur : ces littéraux étaient insérés tels quels, corrompant tout champ à défaut
+  littéral ou nullable laissé vide (par ex. `SQLSTATE[23000] 1062 Duplicate entry 'NULL'` sur
+  un index `UNIQUE` nullable). Les défauts de type **expression** (`CURRENT_TIMESTAMP`, …)
+  étaient également mal gérés, y compris sous MySQL.
+- **`insertMultiple()`** : bindait `NULL` pour les champs non renseignés, ce qui empêchait
+  l'application du `DEFAULT` de la colonne.
+- **Correctif** : les champs non renseignés ne sont plus envoyés avec une valeur forcée. Pour
+  `persist()`, ils sont omis de la requête ; pour `insertMultiple()`, le mot-clé SQL `DEFAULT`
+  est émis par cellule. Dans les deux cas, la base applique elle-même la valeur par défaut de
+  la colonne (NULL, chaîne vide, littéral **ou** expression), quel que soit le moteur. La
+  lecture de `COLUMN_DEFAULT` n'est plus utilisée pour construire les valeurs persistées.
+
+### 🔧 Changements de comportement
+
+- **`persist()` (mise à jour)** : un champ non renseigné (`null`) n'est plus réécrit avec la
+  valeur par défaut de la colonne — il est **laissé inchangé** en base. Comportement cohérent
+  avec le modèle, où `null` signifie « non renseigné » (le setter ignore les `null`).
+
+### 📋 Note de mise à jour
+
+- Le correctif n'agit que sur les **nouvelles** écritures. Les bases ayant tourné sous MariaDB
+  avec une version 3.0.x peuvent contenir des lignes où une chaîne littérale (`NULL`, `''`,
+  `'x'`) a été stockée à la place de la valeur : un nettoyage ponctuel peut être nécessaire.
+
+### ✅ Tests
+
+- Ajout de tests de non-régression vérifiant que les défauts `DEFAULT 'pending'` et
+  `DEFAULT CURRENT_TIMESTAMP` sont appliqués par la base via `persist()` et `insertMultiple()`.
+- Suite validée sous **MariaDB 10.3** (moteur où le bug se manifestait).
+
+#### composer.json
+
+- Version : `3.0.2` → `3.1.0`
+
 ## [3.0.0] - 2026-02-27
 
 ### 🚀 Ajouté
