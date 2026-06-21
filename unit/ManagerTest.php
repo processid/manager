@@ -276,6 +276,51 @@
         }
 
         /**
+         * Insertion multiple en laissant des champs non renseignés : la base doit appliquer
+         * ses valeurs par défaut pour chaque ligne, tout en respectant les valeurs fournies.
+         *
+         * Régression : insertMultiple() bindait NULL pour les champs non renseignés, ce qui
+         * empêchait l'application du DEFAULT de la colonne (status restait NULL au lieu de
+         * 'pending', created_at n'était pas horodaté).
+         *
+         * @covers \processid\manager\Manager::insertMultiple
+         *
+         * @return void
+         */
+        public function testInsertMultipleAppliesDbDefaults(): void
+        {
+            // status et created_at volontairement omis pour les deux modèles.
+            $users = [
+                new Users(['name' => 'Grace', 'email' => 'grace@example.com']),
+                new Users(['name' => 'Heidi', 'email' => 'heidi@example.com']),
+            ];
+            $this->manager->insertMultiple($users);
+
+            $expected = ['grace@example.com' => 'Grace', 'heidi@example.com' => 'Heidi'];
+
+            $inserted = array_values(array_filter(
+                $this->manager->findAll(),
+                fn($u) => array_key_exists($u->getEmail(), $expected)
+            ));
+
+            $this->assertCount(2, $inserted, 'Les deux utilisateurs insérés via insertMultiple sont introuvables.');
+
+            foreach ($inserted as $u) {
+                // Valeur fournie correctement persistée (le bon name avec le bon email).
+                $this->assertEquals($expected[$u->getEmail()], $u->getName(), 'Mauvais name pour ' . $u->getEmail() . '.');
+
+                // DEFAULT littéral appliqué par la base (et non NULL ni représentation littérale).
+                $this->assertEquals('pending', $u->getStatus(), 'insertMultiple n\'a pas laissé la base appliquer le DEFAULT de status pour ' . $u->getEmail() . '.');
+
+                // DEFAULT expression appliqué (vrai timestamp).
+                $createdAt = (string)$u->getCreatedAt();
+                $this->assertNotEmpty($createdAt, 'created_at vide pour ' . $u->getEmail() . '.');
+                $this->assertStringNotContainsStringIgnoringCase('current_timestamp', $createdAt, 'created_at littéral pour ' . $u->getEmail() . '.');
+                $this->assertNotFalse(strtotime($createdAt), 'created_at invalide pour ' . $u->getEmail() . '.');
+            }
+        }
+
+        /**
          * Modification d'une ligne avec la méthode persist.
          *
          * @covers \processid\manager\Manager::persist

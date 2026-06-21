@@ -562,8 +562,15 @@
                     foreach ($models as $key => $model) {
                         $values = array();
                         foreach ($fields as $field) {
-                            $params[$field . '_' . $key] = $model->{$field}();
-                            $values[] = ':' . $field . '_' . $key;
+                            $fieldValue = $model->{$field}();
+                            if (is_null($fieldValue)) {
+                                // Champ non renseigné : on laisse la base appliquer le DEFAULT de la
+                                // colonne (NULL, '', littéral ou expression comme CURRENT_TIMESTAMP), par ligne.
+                                $values[] = 'DEFAULT';
+                            } else {
+                                $params[$field . '_' . $key] = $fieldValue;
+                                $values[] = ':' . $field . '_' . $key;
+                            }
                         }
                         $allValues[] = '(' . implode(', ', $values) . ')';
                     }
