@@ -1705,16 +1705,23 @@
         protected function _add(object $object, bool $ignore = false): object
         {
             $taTables = $this->modelFieldsList();
-            $fields = $values = array();
-            
-            foreach ($taTables as $infos_field) {
-                if (!$infos_field['auto_increment']) {
-                    $fields[] = $infos_field['Field'];
-                    $values[] = ':' . $infos_field['Field'];
+            $fields = $values = $fieldsToPersist = array();
+
+            // On n'inclut dans l'INSERT que les champs réellement renseignés (valeur non null).
+            // Les colonnes omises reçoivent la valeur DEFAULT définie en base
+            // (NULL, '', littéral ou expression telle que CURRENT_TIMESTAMP).
+            // Un champ null = "non renseigné" : le setter du modèle refuse les null.
+            foreach ($taTables as $infosField) {
+                if (!$infosField['auto_increment'] && !is_null($object->{$infosField['Field']}())) {
+                    $fieldsToPersist[] = $infosField;
+                    $fields[] = $infosField['Field'];
+                    $values[] = ':' . $infosField['Field'];
                 }
             }
             $requete = ($ignore ? 'INSERT IGNORE INTO ' : 'INSERT INTO ') . $this->tableName();
-            $requete .= ' (' . implode(',', $fields) . ') VALUES (' . implode(',', $values) . ')';
+            $requete .= empty($fields)
+                ? ' () VALUES ()'
+                : ' (' . implode(',', $fields) . ') VALUES (' . implode(',', $values) . ')';
             $this->setDebugTxt($requete, true);
             
             if (false === $stmt = $this->db->pdo()->prepare($requete)) {
@@ -1722,8 +1729,8 @@
                 throw new Exception($this->errorTxt());
             }
             
-            // Boucle sur les champs pour les bind
-            foreach ($taTables as $infosField) {
+            // Boucle sur les champs renseignés pour les bind
+            foreach ($fieldsToPersist as $infosField) {
                 $this->_bindParamsStmtPersist($object, $infosField, $stmt);
             }
             
@@ -1755,17 +1762,34 @@
         protected function _update(object $object, string|array $taFieldsUpdate = ''): object
         {
             $taFieldsUpdate = is_array($taFieldsUpdate) ? $taFieldsUpdate : (strlen($taFieldsUpdate) ? [$taFieldsUpdate] : []);
-            
-            // Boucle sur les champs pour les variables de bind
+
+            // Vérifie que les champs explicitement demandés existent (détection de typo).
+            foreach ($taFieldsUpdate as $field) {
+                if (!$this->fieldExists($field)) {
+                    trigger_error('Le champ ' . $field . ' n\'existe pas dans la table ' . $this->tableName(), E_USER_ERROR);
+                }
+            }
+
+            // Boucle sur les champs pour les variables de bind.
+            // On ne met à jour que les champs renseignés (valeur non null) : un champ null
+            // signifie "non renseigné" (le setter du modèle refuse les null) et est laissé inchangé en base.
             $fieldsTable = $this->fieldsList()[$this->tableName()];
             $fieldsQueryUpdate = [];
-            foreach ($fieldsTable as $infos_field) {
-                if (empty($taFieldsUpdate) || in_array($infos_field['Field'], $taFieldsUpdate)) {
-                    if (!$infos_field['auto_increment']) {
-                        $fieldsQueryUpdate[] = $infos_field['Field'] . '=:' . $infos_field['Field'];
+            $fieldsToPersist = [];
+            foreach ($fieldsTable as $infosField) {
+                if (empty($taFieldsUpdate) || in_array($infosField['Field'], $taFieldsUpdate)) {
+                    if (!$infosField['auto_increment'] && !is_null($object->{$infosField['Field']}())) {
+                        $fieldsToPersist[] = $infosField;
+                        $fieldsQueryUpdate[] = $infosField['Field'] . '=:' . $infosField['Field'];
                     }
                 }
             }
+
+            // Aucun champ renseigné à mettre à jour : rien à faire.
+            if (empty($fieldsQueryUpdate)) {
+                return $object;
+            }
+
             $requete = 'UPDATE ' . $this->tableName() . ' SET ' . implode(',', $fieldsQueryUpdate);
             $requete .= ' WHERE ' . $this->tableIdField() . ' = :' . $this->tableIdField();
             $this->setDebugTxt($requete, true);
@@ -1775,27 +1799,16 @@
                 throw new Exception($this->errorTxt());
             }
             
-            // Boucle sur les champs pour les bind
-            foreach ($fieldsTable as $infosField) {
-                if (empty($taFieldsUpdate) || in_array($infosField['Field'], $taFieldsUpdate)) {
-                    $this->_bindParamsStmtPersist($object, $infosField, $stmt);
-                }
+            // Boucle sur les champs renseignés pour les bind
+            foreach ($fieldsToPersist as $infosField) {
+                $this->_bindParamsStmtPersist($object, $infosField, $stmt);
             }
             
             // Ajout du champ ID
             $field = $this->tableIdField();
             $stmt->bindValue(':' . $this->tableIdField(), $object->$field(), PDO::PARAM_INT);
             $this->setDebugTxt('bind:' . $this->tableIdField() . ' = ' . $object->$field() . ' (INTEGER)');
-            
-            // Trouvé tous les champs?
-            if (count($fieldsQueryUpdate) != count($taFieldsUpdate)) {
-                foreach ($taFieldsUpdate as $field) {
-                    if (!$this->fieldExists($field)) {
-                        trigger_error('Le champ ' . $field . ' n\'existe pas dans la table ' . $this->tableName(), E_USER_ERROR);
-                    }
-                }
-            }
-            
+
             if (false === $stmt->execute()) {
                 $this->setErrorTxt('Erreur dans update():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete);
                 throw new Exception($this->errorTxt());
@@ -1819,7 +1832,8 @@
                 if (in_array($infosField['Field'], $this->encryptedFields()) && !empty($object->{$infosField['Field']}())) {
                     $value = $this->db->dbCrypt()->encrypt_string($object->{$infosField['Field']}());
                 } else {
-                    $value = $object->{$infosField['Field']}() ?? ($infosField['Default'] ?? null);
+                    // Le champ est garanti non null par les appelants (_add/_update filtrent les null).
+                    $value = $object->{$infosField['Field']}();
                 }
                 $this->_bind_query($stmt, ':' . $infosField['Field'], $infosField['Type'], $value);
                 $this->setDebugTxt('bind:' . $infosField['Field'] . ' = ' . var_export($value, true) . ' (' . $infosField['Type'] . ')');

@@ -234,7 +234,47 @@
             $this->assertEquals('eve@example.com', $result->getEmail(), 'L\'email de l\'utilisateur est incorrect.');
             $this->assertEquals('active', $result->getStatus(), 'Le statut de l\'utilisateur est incorrect.');
         }
-        
+
+        /**
+         * Création d'une ligne en laissant des champs non renseignés : la base doit appliquer
+         * ses valeurs par défaut (littéral 'pending' pour status, expression CURRENT_TIMESTAMP
+         * pour created_at).
+         *
+         * Régression : sous MariaDB, l'ancien code insérait la représentation textuelle de
+         * COLUMN_DEFAULT (p.ex. la chaîne "'pending'" ou "NULL") au lieu de la valeur ; sous
+         * MySQL, l'expression CURRENT_TIMESTAMP était insérée comme une chaîne littérale.
+         *
+         * @covers \processid\manager\Manager::persist
+         *
+         * @return void
+         */
+        public function testPersistCreateAppliesDbDefaults(): void
+        {
+            // status et created_at volontairement omis : ils doivent prendre la valeur DEFAULT de la base.
+            $user = new Users([
+                'name'  => 'Frank',
+                'email' => 'frank@example.com',
+            ]);
+            $this->manager->persist($user);
+
+            $result = $this->manager->findById($user->getId());
+
+            $this->assertNotNull($result, 'Le nouvel utilisateur n\'a pas été trouvé.');
+
+            // DEFAULT littéral : doit valoir 'pending' (et surtout pas "'pending'" ni 'NULL').
+            $this->assertEquals('pending', $result->getStatus(), 'La valeur par défaut littérale de la colonne status n\'a pas été appliquée.');
+
+            // DEFAULT expression : created_at doit être un vrai timestamp,
+            // pas la chaîne 'CURRENT_TIMESTAMP', 'NULL' ou une date zéro.
+            $createdAt = (string)$result->getCreatedAt();
+            $this->assertNotEmpty($createdAt, 'created_at ne doit pas être vide.');
+            $this->assertNotEquals('NULL', $createdAt, 'created_at contient la chaîne littérale "NULL".');
+            $this->assertStringNotContainsStringIgnoringCase('current_timestamp', $createdAt, 'created_at contient la chaîne littérale "CURRENT_TIMESTAMP".');
+            $timestamp = strtotime($createdAt);
+            $this->assertNotFalse($timestamp, 'created_at n\'est pas une date valide : ' . var_export($createdAt, true));
+            $this->assertGreaterThan(strtotime('2000-01-01'), $timestamp, 'created_at est une date zéro/invalide : ' . var_export($createdAt, true));
+        }
+
         /**
          * Modification d'une ligne avec la méthode persist.
          *
