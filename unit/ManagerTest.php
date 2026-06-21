@@ -9,6 +9,8 @@
     use processid\manager\ConnectionManager;
     use processid\manager\enum\QueryOperator;
     use processid\manager\Manager;
+    use processid\manager\unit\src\Secret;
+    use processid\manager\unit\src\SecretManager;
     use processid\manager\unit\src\Users;
     use processid\manager\unit\src\UsersManager;
     use RuntimeException;
@@ -318,6 +320,45 @@
                 $this->assertStringNotContainsStringIgnoringCase('current_timestamp', $createdAt, 'created_at littéral pour ' . $u->getEmail() . '.');
                 $this->assertNotFalse(strtotime($createdAt), 'created_at invalide pour ' . $u->getEmail() . '.');
             }
+        }
+
+        /**
+         * insertMultiple() doit chiffrer les champs marqués #[Encrypted], comme persist().
+         *
+         * Régression : insertMultiple() stockait la valeur en clair (aucun chiffrement),
+         * rendant la donnée illisible à la relecture (qui, elle, déchiffre).
+         *
+         * @covers \processid\manager\Manager::insertMultiple
+         *
+         * @return void
+         */
+        public function testInsertMultipleEncryptsFields(): void
+        {
+            $manager = new SecretManager();
+
+            $manager->insertMultiple([
+                new Secret(['label' => 'alpha', 'secret' => 'mon-secret-A']),
+                new Secret(['label' => 'beta', 'secret' => 'mon-secret-B']),
+            ]);
+
+            $expected = ['alpha' => 'mon-secret-A', 'beta' => 'mon-secret-B'];
+
+            // Round-trip : la lecture déchiffre, on doit retrouver le clair.
+            $rows = array_values(array_filter(
+                $manager->findAll(),
+                fn($s) => array_key_exists($s->getLabel(), $expected)
+            ));
+            $this->assertCount(2, $rows, 'Les secrets insérés via insertMultiple sont introuvables.');
+            foreach ($rows as $s) {
+                $this->assertEquals($expected[$s->getLabel()], $s->getSecret(), 'Le secret déchiffré ne correspond pas pour ' . $s->getLabel() . '.');
+            }
+
+            // Donnée au repos : la colonne brute ne doit PAS contenir le clair (preuve du chiffrement).
+            $raw = ConnectionManager::get()->pdo()
+                ->query("SELECT secret FROM secrets_tests WHERE label = 'alpha'")
+                ->fetchColumn();
+            $this->assertNotEmpty($raw, 'La colonne secret est vide.');
+            $this->assertNotEquals('mon-secret-A', $raw, 'insertMultiple() a stocké le secret en clair (non chiffré).');
         }
 
         /**

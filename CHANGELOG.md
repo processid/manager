@@ -27,6 +27,13 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/spec
   la colonne (NULL, chaîne vide, littéral **ou** expression), quel que soit le moteur. La
   lecture de `COLUMN_DEFAULT` n'est plus utilisée pour construire les valeurs persistées.
 
+#### Chiffrement non appliqué par `insertMultiple()`
+
+- `insertMultiple()` n'appliquait **pas** le chiffrement aux champs marqués `#[Encrypted]`
+  (contrairement à `persist()`) : la valeur était stockée **en clair**, donc illisible à la
+  relecture (qui déchiffre systématiquement). `insertMultiple()` chiffre désormais ces champs
+  comme `persist()`.
+
 ### 🔧 Changements de comportement
 
 - **`persist()` (mise à jour)** : un champ non renseigné (`null`) n'est plus réécrit avec la
@@ -38,12 +45,15 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/spec
 - Le correctif n'agit que sur les **nouvelles** écritures. Les bases ayant tourné sous MariaDB
   avec une version 3.0.x peuvent contenir des lignes où une chaîne littérale (`NULL`, `''`,
   `'x'`) a été stockée à la place de la valeur : un nettoyage ponctuel peut être nécessaire.
+- Les enregistrements écrits via `insertMultiple()` avec un champ `#[Encrypted]` sous une
+  version ≤ 3.0.x ont été stockés **en clair** : ré-insérer ces données après mise à jour.
 
 ### ✅ Tests
 
-- Ajout de tests de non-régression vérifiant que les défauts `DEFAULT 'pending'` et
-  `DEFAULT CURRENT_TIMESTAMP` sont appliqués par la base via `persist()` et `insertMultiple()`.
-- Suite validée sous **MariaDB 10.3** (moteur où le bug se manifestait).
+- Ajout de tests de non-régression : application des défauts (`DEFAULT 'pending'`,
+  `DEFAULT CURRENT_TIMESTAMP`) via `persist()` et `insertMultiple()`, et chiffrement
+  round-trip d'un champ `#[Encrypted]` via `insertMultiple()`.
+- Suite validée sous **MariaDB 10.3** (moteur où les bugs se manifestaient).
 
 #### composer.json
 

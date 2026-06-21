@@ -1,6 +1,7 @@
 -- Suppression des tables en premier (permet de régler les problèmes de dépendance sur les foreigns keys)
 DROP TABLE IF EXISTS orders_tests;
 DROP TABLE IF EXISTS users_tests;
+DROP TABLE IF EXISTS secrets_tests;
 
 -- création de la table 'users_tests' pour les tests
 CREATE TABLE users_tests
@@ -21,6 +22,14 @@ CREATE TABLE orders_tests
     status     ENUM ('paid', 'unpaid', 'cancelled') DEFAULT 'unpaid',
     created_at TIMESTAMP                            DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users_tests (id) ON DELETE CASCADE
+);
+
+-- création de la table 'secrets_tests' pour les tests (champ chiffré)
+CREATE TABLE secrets_tests
+(
+    id     INT AUTO_INCREMENT PRIMARY KEY,
+    label  VARCHAR(255)  NOT NULL,
+    secret VARCHAR(1024) NULL
 );
 
 -- Insertion de données dans la table 'users_tests'

@@ -568,6 +568,11 @@
                                 // colonne (NULL, '', littéral ou expression comme CURRENT_TIMESTAMP), par ligne.
                                 $values[] = 'DEFAULT';
                             } else {
+                                // Chiffrement des champs marqués #[Encrypted], comme dans persist()
+                                // (même garde !empty, cohérente avec _descryptData() à la lecture).
+                                if (in_array($field, $this->encryptedFields()) && !empty($fieldValue)) {
+                                    $fieldValue = $this->db->dbCrypt()->encrypt_string($fieldValue);
+                                }
                                 $params[$field . '_' . $key] = $fieldValue;
                                 $values[] = ':' . $field . '_' . $key;
                             }
