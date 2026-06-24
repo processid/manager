@@ -9,6 +9,8 @@
     use processid\manager\ConnectionManager;
     use processid\manager\enum\QueryOperator;
     use processid\manager\Manager;
+    use processid\manager\unit\src\Secret;
+    use processid\manager\unit\src\SecretManager;
     use processid\manager\unit\src\Users;
     use processid\manager\unit\src\UsersManager;
     use RuntimeException;
@@ -234,7 +236,152 @@
             $this->assertEquals('eve@example.com', $result->getEmail(), 'L\'email de l\'utilisateur est incorrect.');
             $this->assertEquals('active', $result->getStatus(), 'Le statut de l\'utilisateur est incorrect.');
         }
-        
+
+        /**
+         * Création d'une ligne en laissant des champs non renseignés : la base doit appliquer
+         * ses valeurs par défaut (littéral 'pending' pour status, expression CURRENT_TIMESTAMP
+         * pour created_at).
+         *
+         * Régression : sous MariaDB, l'ancien code insérait la représentation textuelle de
+         * COLUMN_DEFAULT (p.ex. la chaîne "'pending'" ou "NULL") au lieu de la valeur ; sous
+         * MySQL, l'expression CURRENT_TIMESTAMP était insérée comme une chaîne littérale.
+         *
+         * @covers \processid\manager\Manager::persist
+         *
+         * @return void
+         */
+        public function testPersistCreateAppliesDbDefaults(): void
+        {
+            // status et created_at volontairement omis : ils doivent prendre la valeur DEFAULT de la base.
+            $user = new Users([
+                'name'  => 'Frank',
+                'email' => 'frank@example.com',
+            ]);
+            $this->manager->persist($user);
+
+            $result = $this->manager->findById($user->getId());
+
+            $this->assertNotNull($result, 'Le nouvel utilisateur n\'a pas été trouvé.');
+
+            // DEFAULT littéral : doit valoir 'pending' (et surtout pas "'pending'" ni 'NULL').
+            $this->assertEquals('pending', $result->getStatus(), 'La valeur par défaut littérale de la colonne status n\'a pas été appliquée.');
+
+            // DEFAULT expression : created_at doit être un vrai timestamp,
+            // pas la chaîne 'CURRENT_TIMESTAMP', 'NULL' ou une date zéro.
+            $createdAt = (string)$result->getCreatedAt();
+            $this->assertNotEmpty($createdAt, 'created_at ne doit pas être vide.');
+            $this->assertNotEquals('NULL', $createdAt, 'created_at contient la chaîne littérale "NULL".');
+            $this->assertStringNotContainsStringIgnoringCase('current_timestamp', $createdAt, 'created_at contient la chaîne littérale "CURRENT_TIMESTAMP".');
+            $timestamp = strtotime($createdAt);
+            $this->assertNotFalse($timestamp, 'created_at n\'est pas une date valide : ' . var_export($createdAt, true));
+            $this->assertGreaterThan(strtotime('2000-01-01'), $timestamp, 'created_at est une date zéro/invalide : ' . var_export($createdAt, true));
+        }
+
+        /**
+         * Insertion multiple en laissant des champs non renseignés : la base doit appliquer
+         * ses valeurs par défaut pour chaque ligne, tout en respectant les valeurs fournies.
+         *
+         * Régression : insertMultiple() bindait NULL pour les champs non renseignés, ce qui
+         * empêchait l'application du DEFAULT de la colonne (status restait NULL au lieu de
+         * 'pending', created_at n'était pas horodaté).
+         *
+         * @covers \processid\manager\Manager::insertMultiple
+         *
+         * @return void
+         */
+        public function testInsertMultipleAppliesDbDefaults(): void
+        {
+            // status et created_at volontairement omis pour les deux modèles.
+            $users = [
+                new Users(['name' => 'Grace', 'email' => 'grace@example.com']),
+                new Users(['name' => 'Heidi', 'email' => 'heidi@example.com']),
+            ];
+            $this->manager->insertMultiple($users);
+
+            $expected = ['grace@example.com' => 'Grace', 'heidi@example.com' => 'Heidi'];
+
+            $inserted = array_values(array_filter(
+                $this->manager->findAll(),
+                fn($u) => array_key_exists($u->getEmail(), $expected)
+            ));
+
+            $this->assertCount(2, $inserted, 'Les deux utilisateurs insérés via insertMultiple sont introuvables.');
+
+            foreach ($inserted as $u) {
+                // Valeur fournie correctement persistée (le bon name avec le bon email).
+                $this->assertEquals($expected[$u->getEmail()], $u->getName(), 'Mauvais name pour ' . $u->getEmail() . '.');
+
+                // DEFAULT littéral appliqué par la base (et non NULL ni représentation littérale).
+                $this->assertEquals('pending', $u->getStatus(), 'insertMultiple n\'a pas laissé la base appliquer le DEFAULT de status pour ' . $u->getEmail() . '.');
+
+                // DEFAULT expression appliqué (vrai timestamp).
+                $createdAt = (string)$u->getCreatedAt();
+                $this->assertNotEmpty($createdAt, 'created_at vide pour ' . $u->getEmail() . '.');
+                $this->assertStringNotContainsStringIgnoringCase('current_timestamp', $createdAt, 'created_at littéral pour ' . $u->getEmail() . '.');
+                $this->assertNotFalse(strtotime($createdAt), 'created_at invalide pour ' . $u->getEmail() . '.');
+            }
+        }
+
+        /**
+         * insertMultiple() doit chiffrer les champs marqués #[Encrypted], comme persist().
+         *
+         * Régression : insertMultiple() stockait la valeur en clair (aucun chiffrement),
+         * rendant la donnée illisible à la relecture (qui, elle, déchiffre).
+         *
+         * @covers \processid\manager\Manager::insertMultiple
+         *
+         * @return void
+         */
+        public function testInsertMultipleEncryptsFields(): void
+        {
+            $manager = new SecretManager();
+
+            $manager->insertMultiple([
+                new Secret(['label' => 'alpha', 'secret' => 'mon-secret-A']),
+                new Secret(['label' => 'beta', 'secret' => 'mon-secret-B']),
+            ]);
+
+            $expected = ['alpha' => 'mon-secret-A', 'beta' => 'mon-secret-B'];
+
+            // Round-trip : la lecture déchiffre, on doit retrouver le clair.
+            $rows = array_values(array_filter(
+                $manager->findAll(),
+                fn($s) => array_key_exists($s->getLabel(), $expected)
+            ));
+            $this->assertCount(2, $rows, 'Les secrets insérés via insertMultiple sont introuvables.');
+            foreach ($rows as $s) {
+                $this->assertEquals($expected[$s->getLabel()], $s->getSecret(), 'Le secret déchiffré ne correspond pas pour ' . $s->getLabel() . '.');
+            }
+
+            // Donnée au repos : la colonne brute ne doit PAS contenir le clair (preuve du chiffrement).
+            $raw = ConnectionManager::get()->pdo()
+                ->query("SELECT secret FROM secrets_tests WHERE label = 'alpha'")
+                ->fetchColumn();
+            $this->assertNotEmpty($raw, 'La colonne secret est vide.');
+            $this->assertNotEquals('mon-secret-A', $raw, 'insertMultiple() a stocké le secret en clair (non chiffré).');
+        }
+
+        /**
+         * persist() doit stocker correctement une colonne TIME.
+         *
+         * Régression : _bind_query() rangeait `time` avec les entiers et faisait (int)$value,
+         * donc '12:30:00' était stocké comme 12 secondes ('00:00:12').
+         *
+         * @covers \processid\manager\Manager::persist
+         *
+         * @return void
+         */
+        public function testPersistBindsTimeColumnCorrectly(): void
+        {
+            $manager = new SecretManager();
+            $secret = new Secret(['label' => 'timed', 'secret' => 's', 'duration' => '12:30:00']);
+            $manager->persist($secret);
+
+            $reloaded = $manager->findById($secret->getId());
+            $this->assertNotNull($reloaded, 'La ligne avec colonne TIME est introuvable.');
+            $this->assertEquals('12:30:00', $reloaded->getDuration(), 'La colonne TIME a été corrompue (cast en entier au lieu de la chaîne).');
+        }
+
         /**
          * Modification d'une ligne avec la méthode persist.
          *
