@@ -5,6 +5,65 @@ Tous les changements notables de ce projet seront documentés dans ce fichier.
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-06-25
+
+### 🚀 Ajouté
+
+#### Jeu de caractères de connexion configurable
+
+- Nouvelle clé de configuration **`charset`** prise en compte par `DbConnect` (via
+  `ConnectionManager::setConfig()` ou le tableau passé au constructeur). Elle permet d'ouvrir
+  la connexion dans un autre jeu de caractères que le défaut, par exemple
+  `'charset' => 'utf8mb4'` pour les caractères 4 octets (emojis, etc.).
+- Le `charset` est appliqué au DSN **et** à la commande d'initialisation
+  `SET NAMES … COLLATE …_unicode_ci`. La collation `{charset}_unicode_ci` doit exister pour le
+  charset choisi (cas de `utf8mb4`).
+- **Défaut inchangé** : sans la clé, la connexion reste ouverte en `utf8`. Aucune configuration
+  existante n'est impactée.
+
+### 🐛 Corrigé
+
+#### Construction sans chiffrement (`TypeError`) et cohérence des clés
+
+- Construire un `DbConnect` sans fournir **les trois** clés de chiffrement
+  (`key_aes256` / `key_hash512` / `method`) provoquait une **`TypeError`** dès le constructeur
+  (propriétés `null` exposées par des accesseurs typés `string`). Le chiffrement était donc
+  *de facto* obligatoire.
+- **Correctif** : ces propriétés sont initialisées à la chaîne vide et `encrypt()` applique une
+  règle explicite **« tout ou rien »** :
+  - **aucune** clé → chiffrement désactivé proprement (opt-out, plus de `TypeError`) ;
+  - **les trois** clés → chiffrement activé (comportement inchangé) ;
+  - **jeu partiel** (1 ou 2 clés) → `\RuntimeException` explicite signalant une configuration
+    incohérente, au lieu de l'ancien `TypeError`.
+
+### 🔧 Changements de comportement
+
+#### Échec de connexion : exception au lieu de `die()`
+
+- En cas d'échec d'ouverture de la connexion, `DbConnect::connect()` ne fait plus `die()`
+  (qui arrêtait le processus avec un **code retour `0`** — un faux « succès » pour un superviseur
+  ou la CI — et affichait le message d'erreur PDO brut). Elle **lève désormais une
+  `\RuntimeException`**, le détail PDO d'origine restant accessible via `getPrevious()` (chaînage)
+  sans être affiché.
+- L'appelant peut donc traiter l'échec (page d'erreur, sonde de disponibilité, retry…) ; le
+  `@throws RuntimeException` documenté par `ConnectionManager::get()` devient effectif. **Si votre
+  code s'appuyait sur l'arrêt implicite du script**, entourez désormais la création de la connexion
+  (ou `ConnectionManager::get()`) d'un `try { … } catch (\RuntimeException $e) { … }`.
+- Le mode d'erreur PDO reste **inchangé** (`PDO::ERRMODE_WARNING`) : la gestion des erreurs des
+  requêtes (post-connexion) n'est pas modifiée par cette version.
+
+### 📋 Note de mise à jour
+
+- Changements **rétro-compatibles** côté API publique : aucune signature modifiée, valeurs par
+  défaut conservées. Les seuls comportements observables qui changent concernent des chemins qui,
+  auparavant, **interrompaient** déjà l'exécution : l'échec de connexion (désormais une exception
+  rattrapable au lieu d'un `die()`) et une configuration de chiffrement partielle (désormais une
+  `\RuntimeException` claire au lieu d'un `TypeError`).
+
+#### composer.json
+
+- Version : `3.1.0` → `3.2.0`
+
 ## [3.1.0] - 2026-06-21
 
 ### 🐛 Corrigé

@@ -44,6 +44,7 @@ ConnectionManager::setConfig(['main' => [
     'database'    => 'dbname',
     'user'        => 'dbuser',
     'pass'        => 'dbpassword',
+    'charset'     => 'utf8mb4',
     'key_aes256'  => '...',
     'key_hash512' => '...',
     'method'      => 'aes-256-cbc'
@@ -53,11 +54,20 @@ ConnectionManager::setConfig(['main' => [
     'database'    => 'dbnamero',
     'user'        => 'dbuserro',
     'pass'        => 'dbpasswordro',
+    'charset'     => 'utf8mb4',
     'key_aes256'  => '...',
     'key_hash512' => '...',
     'method'      => 'aes-256-cbc'
 ]);
 ```
+
+> **`charset`** est optionnel (défaut `utf8`). Utilisez `utf8mb4` pour prendre en charge les
+> caractères 4 octets (emojis, etc.). La collation `{charset}_unicode_ci` doit exister pour le
+> charset choisi.
+>
+> Les clés de chiffrement **`key_aes256`**, **`key_hash512`** et **`method`** vont **ensemble** :
+> fournissez-les **toutes les trois** pour activer le chiffrement transparent des champs
+> `#[Encrypted]`, ou **aucune** pour le désactiver. Un jeu partiel lève une exception.
 
 ## Héritage de la classe Manager
 
