@@ -34,3 +34,6 @@ Exemple : "\processid\manager\unit\config\DbConfiguration.json"
   - Run the command ' sh run.sh'
 
 The test will work on new, specific data. 
+# APCu
+The APCu column cache tests (ManagerCacheTest) are skipped when APCu is not enabled in the process.
+In CLI, enable it explicitly : `php -d apc.enable_cli=1 <path to phpunit> ...`

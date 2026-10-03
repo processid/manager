@@ -5,6 +5,61 @@ Tous les changements notables de ce projet seront documentés dans ce fichier.
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/spec/v2.0.0.html).
 
+## [3.3.0] - 2026-10-03
+
+### 🚀 Ajouté
+
+#### Cache des métadonnées par classe (toujours actif, transparent)
+
+- `Manager::__construct()` ne refait plus, à chaque `new`, la lecture par réflexion des attributs du
+  Manager et de son modèle (`#[DbFactory]`, `#[ClassName]`, `#[Table]`, `#[Field]`, `#[ID]`,
+  `#[Encrypted]`), l'instanciation du modèle et le contrôle des champs : ce travail est fait au
+  **premier** `new` de chaque classe dans le processus, puis son résultat (`dbFactoryName`, `className`,
+  `tableName`, `tableIdField`, `fields`, `_encryptedFields`) est réaffecté aux `new` suivants.
+- La **connexion** est toujours demandée à `ConnectionManager::get()` à chaque construction : aucun
+  objet de connexion n'est mis en cache (comportement inchangé après un `ConnectionManager::clear()`,
+  une reconnexion ou dans un processus forké).
+- Si l'initialisation lève une exception, rien n'est mis en cache (le `new` suivant la relève à nouveau).
+- Si une classe fille renseigne une de ces propriétés **avant** `parent::__construct()` avec une valeur
+  différente de celle de la première instance (par exemple une table choisie par instance),
+  l'initialisation complète est rejouée pour cette instance : le cache ne l'écrase jamais.
+- Nouvelle méthode **`Manager::clearMetadataCache()`** : vide ce cache et la liste des colonnes
+  mémorisée dans le processus (`fieldsList()`), utile aux tests et aux processus longs après un
+  changement de schéma.
+
+#### Cache APCu optionnel des colonnes (désactivé par défaut)
+
+- La lecture des colonnes dans `information_schema.columns` (`recordFields()`, utilisée par
+  `fieldExists()`, `fieldsList()`, …) peut être partagée entre les processus via APCu :
+  `Manager::enableColumnCache(int $ttl = 300, string $prefix = ''): bool`,
+  `Manager::disableColumnCache()`, `Manager::isColumnCacheEnabled()`, `Manager::clearColumnCache()`.
+- **Sans appel à `enableColumnCache()`, aucun appel APCu n'est fait** : comportement strictement
+  identique à la version précédente.
+- Clé = préfixe applicatif + hôte + base (de la configuration de la connexion) + table. Seul un résultat
+  non vide est stocké (une table absente n'est pas mémorisée hors du processus).
+- Repli silencieux : si APCu est absent ou désactivé (`apcu_enabled()` faux, cas par défaut en CLI),
+  `enableColumnCache()` retourne `false` et le cache reste désactivé.
+- `DbConnect` expose deux accesseurs en lecture : `host()` et `database()`.
+
+### 📋 Note de mise à jour
+
+- Changements **rétro-compatibles** : aucune signature modifiée, aucune ligne à changer dans les projets
+  utilisateurs ; le gain du cache par classe est automatique.
+- Effet observable déjà connu (identique au cache statique des colonnes existant) : un changement de
+  schéma n'est vu qu'au processus suivant, ou après `Manager::clearMetadataCache()`.
+- Le modèle n'est plus instancié par le constructeur du Manager aux `new` suivants d'une même classe
+  (il ne servait qu'à la réflexion) : un constructeur de modèle à effet de bord n'est donc plus appelé
+  qu'au premier `new` du Manager dans le processus.
+- Cache APCu : il vit dans la mémoire partagée du processus maître PHP (php-fpm ou SAPI web) et est
+  partagé par toutes les applications de ce maître (d'où le préfixe et la clé hôte + base + table). Après
+  un changement de schéma : redémarrage complet du service PHP (un simple *reload* ne garantit pas la
+  purge), `Manager::clearColumnCache()` exécuté **dans le SAPI web** (en CLI, la mémoire APCu est
+  distincte), ou attente du TTL.
+
+#### composer.json
+
+- Version : `3.2.0` → `3.3.0`
+
 ## [3.2.0] - 2026-06-25
 
 ### 🚀 Ajouté

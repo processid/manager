@@ -273,6 +273,43 @@ $this->countAll();
 ## Débogage
 `$this->debugTxt()` contient la dernière requête et les éventuelles valeurs des binds.
 
+## Caches des métadonnées
+
+### Cache par classe (automatique)
+Les métadonnées d'un Manager (attributs de classe, champs `#[Field]`, `#[ID]`, `#[Encrypted]` du modèle) ne dépendent que
+de sa classe : elles sont calculées au premier `new` de chaque classe dans le processus, puis réutilisées par les `new`
+suivants. Aucune configuration n'est nécessaire. La connexion est toujours demandée à `ConnectionManager::get()` à chaque
+construction (elle n'est jamais mise en cache), et une initialisation en erreur n'est pas mémorisée.
+
+Comme la liste des colonnes lue dans `information_schema`, ces métadonnées sont figées pour la durée du processus : un
+changement de schéma est vu au processus suivant. Dans un processus long (démon, worker) ou dans des tests, après un
+changement de schéma :
+
+```php
+Manager::clearMetadataCache(); // vide le cache par classe et la liste des colonnes du processus
+```
+
+### Cache APCu des colonnes (optionnel, désactivé par défaut)
+En web, chaque requête est un nouveau processus : la lecture des colonnes dans `information_schema.columns` est refaite à
+chaque requête pour chaque table utilisée. Elle peut être partagée entre les processus via APCu, en l'activant au démarrage
+de l'application (au même endroit que `ConnectionManager::setConfig()`) :
+
+```php
+// $ttl : durée de vie en secondes (0 = sans expiration) ; $prefix : distingue les applications partageant APCu.
+Manager::enableColumnCache(ttl: 300, prefix: 'mon_application'); // retourne false si APCu est indisponible
+```
+
+- Sans cet appel, aucun appel APCu n'est fait : comportement identique à l'absence de cache.
+- Si APCu est absent ou désactivé (`apcu_enabled()` faux, cas par défaut en CLI où `apc.enable_cli=0`),
+  `enableColumnCache()` retourne `false` et rien ne change.
+- Clé : préfixe + hôte + base (configurés pour la connexion) + table. Une table absente (aucune colonne) n'est pas mémorisée.
+- Le cache vit dans la mémoire partagée du processus maître PHP (php-fpm ou SAPI web) : il est partagé par toutes les
+  applications de ce maître et n'est vidé que par un redémarrage complet du service PHP (ne pas compter sur un simple
+  *reload*).
+- Après un changement de schéma : redémarrer le service PHP, appeler `Manager::clearColumnCache()` **depuis le SAPI web**
+  (la mémoire APCu de la CLI est distincte), ou attendre l'expiration du TTL.
+- `Manager::disableColumnCache()` désactive le cache, `Manager::isColumnCacheEnabled()` indique s'il est actif.
+
 ## QueryBuilder
 
 La classe QueryBuilder permet de construire des arguments de requêtes complexes pour les fonctions findBy, countBy, updateBy et deleteBy d'un

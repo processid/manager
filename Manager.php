@@ -58,10 +58,130 @@
         private array $_ta_request_tables = [];
         /** @var array La liste des champs est partagée entre toutes les classes qui héritent de la classe Manager (<table>Manager). */
         private static array $_fieldsList = [];
-        
+        /** @var string[] Propriétés renseignées par l'initialisation des attributs (_initAttributes()), mémorisées par le cache des métadonnées. */
+        private const METADATA_PROPERTIES = ['dbFactoryName', 'className', 'tableName', 'tableIdField', 'fields', '_encryptedFields'];
+        /** @var string Préfixe commun des clés APCu du cache des colonnes. */
+        private const COLUMN_CACHE_NAMESPACE = 'processid.manager.columns';
+        /**
+         * @var array<string, array{before: array<string, mixed>, after: array<string, mixed>}> Cache des métadonnées par classe
+         * de Manager (static::class) : état des propriétés avant et après l'initialisation des attributs.
+         */
+        private static array $_metadataCache = [];
+        /** @var bool Cache APCu des colonnes (information_schema) activé : désactivé par défaut. */
+        private static bool $_columnCacheEnabled = false;
+        /** @var int Durée de vie (secondes) des entrées du cache APCu des colonnes, 0 = sans expiration. */
+        private static int $_columnCacheTtl = 300;
+        /** @var string Préfixe applicatif des clés du cache APCu des colonnes. */
+        private static string $_columnCachePrefix = '';
+
+        /**
+         * Initialise le manager à partir de ses attributs de classe et de ceux de son modèle.
+         *
+         * L'état calculé (table, classe modèle, champs, champ id, champs chiffrés, factory) ne dépend que de la classe : il est
+         * calculé au premier `new` de la classe dans le processus puis réaffecté depuis un cache par classe aux suivants.
+         * La connexion est toujours demandée à ConnectionManager::get() (elle n'est jamais mise en cache).
+         * Si une instance arrive au constructeur avec un état différent de celui de la première (propriété renseignée par
+         * le constructeur d'une classe fille avant parent::__construct()), l'initialisation complète est rejouée.
+         *
+         * @throws Exception Voir _initAttributes().
+         */
         public function __construct()
         {
+            $before = $this->_metadataSnapshot();
+            $cached = self::$_metadataCache[static::class] ?? null;
+
+            if ($cached !== null && $cached['before'] === $before) {
+                foreach ($cached['after'] as $property => $value) {
+                    $this->$property = $value;
+                }
+                $this->_initDb();
+                return;
+            }
+
             $this->_initAttributes();
+
+            // Mémorisé seulement après une initialisation complète sans exception, et uniquement pour l'état de départ de la classe.
+            if ($cached === null) {
+                self::$_metadataCache[static::class] = ['before' => $before, 'after' => $this->_metadataSnapshot()];
+            }
+        }
+
+        /**
+         * Vide le cache des métadonnées par classe et la liste des colonnes des tables mémorisée dans le processus.
+         *
+         * Le `new` suivant de chaque Manager refait l'initialisation complète (réflexion, lecture des colonnes). Utile aux
+         * tests et aux processus longs après un changement de schéma. Le cache APCu des colonnes (s'il est activé) n'est pas
+         * concerné : voir clearColumnCache().
+         *
+         * @return void
+         */
+        public static function clearMetadataCache(): void
+        {
+            self::$_metadataCache = [];
+            self::$_fieldsList = [];
+        }
+
+        /**
+         * Active le cache APCu des colonnes des tables (lecture de information_schema.columns), partagé entre les processus.
+         *
+         * Désactivé par défaut. Sans APCu (extension absente ou apcu_enabled() faux, cas habituel en CLI), le cache reste
+         * désactivé et la méthode retourne false : le comportement est alors celui sans cache.
+         *
+         * @param int $ttl Durée de vie des entrées en secondes (0 = sans expiration, purge par clearColumnCache()).
+         * @param string $prefix Préfixe des clés, pour distinguer plusieurs applications partageant le même APCu.
+         *
+         * @return bool true si le cache est actif.
+         */
+        public static function enableColumnCache(int $ttl = 300, string $prefix = ''): bool
+        {
+            if (!function_exists('apcu_enabled') || !apcu_enabled()) {
+                self::$_columnCacheEnabled = false;
+                return false;
+            }
+
+            self::$_columnCacheTtl = max(0, $ttl);
+            self::$_columnCachePrefix = $prefix;
+            self::$_columnCacheEnabled = true;
+
+            return true;
+        }
+
+        /**
+         * Désactive le cache APCu des colonnes (les entrées déjà stockées ne sont pas supprimées : voir clearColumnCache()).
+         *
+         * @return void
+         */
+        public static function disableColumnCache(): void
+        {
+            self::$_columnCacheEnabled = false;
+        }
+
+        /**
+         * Indique si le cache APCu des colonnes est actif.
+         *
+         * @return bool
+         */
+        public static function isColumnCacheEnabled(): bool
+        {
+            return self::$_columnCacheEnabled;
+        }
+
+        /**
+         * Supprime de APCu les entrées du cache des colonnes portant le préfixe configuré (par exemple après un changement
+         * de schéma). La liste des colonnes mémorisée dans le processus courant n'est pas concernée : voir clearMetadataCache().
+         *
+         * @return bool false si APCu n'est pas disponible.
+         */
+        public static function clearColumnCache(): bool
+        {
+            if (!function_exists('apcu_enabled') || !apcu_enabled() || !class_exists('APCUIterator')) {
+                return false;
+            }
+
+            $pattern = '/^' . preg_quote(self::COLUMN_CACHE_NAMESPACE . '|' . self::$_columnCachePrefix . '|', '/') . '/';
+            apcu_delete(new \APCUIterator($pattern, APC_ITER_KEY));
+
+            return true;
         }
         
         /**
@@ -1018,22 +1138,44 @@
             $requete .= ' FROM information_schema.columns';
             $requete .= ' WHERE table_name=:tableName';
             $requete .= ' AND table_schema=DATABASE()';
-            
-            $query = $this->db->pdo()->prepare($requete);
-            if ($query === false) {
-                trigger_error('Erreur dans recordFields():prepare() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete, E_USER_ERROR);
+
+            // Cache APCu des colonnes (désactivé par défaut : $cacheKey vaut alors null et APCu n'est pas sollicité).
+            $cacheKey = $this->_columnCacheKey();
+            $rows = null;
+            if ($cacheKey !== null) {
+                $cached = apcu_fetch($cacheKey, $success);
+                if ($success && is_array($cached)) {
+                    $rows = $cached;
+                }
             }
-            
-            $query->bindValue(':tableName', $this->tableName(), PDO::PARAM_STR);
-            
-            $query->execute();
-            if ($query === false) {
-                trigger_error('Erreur dans recordFields():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete, E_USER_ERROR);
+
+            if ($rows === null) {
+                $query = $this->db->pdo()->prepare($requete);
+                if ($query === false) {
+                    trigger_error('Erreur dans recordFields():prepare() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete, E_USER_ERROR);
+                }
+
+                $query->bindValue(':tableName', $this->tableName(), PDO::PARAM_STR);
+
+                $executed = $query->execute();
+                if ($query === false) {
+                    trigger_error('Erreur dans recordFields():execute() - ' . implode(' - ', $this->db->pdo()->errorInfo()) . ' - ' . $requete, E_USER_ERROR);
+                }
+
+                $rows = [];
+                while ($results = $query->fetch(PDO::FETCH_ASSOC)) {
+                    $rows[] = $results;
+                }
+
+                // Seul un résultat lu avec succès et non vide est partagé (une table absente n'est pas mémorisée hors du processus).
+                if ($cacheKey !== null && $executed !== false && $rows !== []) {
+                    apcu_store($cacheKey, $rows, self::$_columnCacheTtl);
+                }
             }
-            
+
             self::$_fieldsList[$this->tableName()] = [];
-            
-            while ($results = $query->fetch(PDO::FETCH_ASSOC)) {
+
+            foreach ($rows as $results) {
                 self::$_fieldsList[$this->tableName()][$results['COLUMN_NAME']] = [];
                 self::$_fieldsList[$this->tableName()][$results['COLUMN_NAME']]['Field'] = $results['COLUMN_NAME'];                                         // Nom du champ
                 self::$_fieldsList[$this->tableName()][$results['COLUMN_NAME']]['Type'] = strtolower($results['DATA_TYPE']);                                // Type de champs (bigint, varchar, int, date, decimal, ...)
@@ -1097,6 +1239,54 @@
         private function _initDb(): void
         {
             $this->db = ConnectionManager::get($this->dbFactoryName);
+        }
+
+        /**
+         * Photographie des propriétés renseignées par l'initialisation des attributs.
+         * Une propriété typée non initialisée (tableName, tableIdField) est absente du tableau ; les propriétés nullables
+         * (dbFactoryName, className) ont une valeur par défaut et y figurent toujours, y compris à null.
+         *
+         * @return array<string, mixed>
+         */
+        private function _metadataSnapshot(): array
+        {
+            $snapshot = [];
+            foreach (self::METADATA_PROPERTIES as $property) {
+                if (isset($this->$property) || $property === 'dbFactoryName' || $property === 'className') {
+                    $snapshot[$property] = $this->$property;
+                }
+            }
+
+            return $snapshot;
+        }
+
+        /**
+         * Clé APCu des colonnes de la table du manager, ou null si le cache des colonnes est désactivé.
+         *
+         * @return string|null
+         */
+        private function _columnCacheKey(): ?string
+        {
+            if (!self::$_columnCacheEnabled) {
+                return null;
+            }
+
+            return self::columnCacheKey(self::$_columnCachePrefix, (string)$this->db->host(), (string)$this->db->database(), $this->tableName());
+        }
+
+        /**
+         * Construit une clé du cache APCu des colonnes : préfixe applicatif + hôte + base + table.
+         *
+         * @param string $prefix
+         * @param string $host
+         * @param string $database
+         * @param string $table
+         *
+         * @return string
+         */
+        private static function columnCacheKey(string $prefix, string $host, string $database, string $table): string
+        {
+            return self::COLUMN_CACHE_NAMESPACE . '|' . $prefix . '|' . $host . '|' . $database . '|' . $table;
         }
         
         /**

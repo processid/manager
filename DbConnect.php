@@ -69,7 +69,23 @@
                 $this->_type = $type;
             }
         }
-        
+
+        /**
+         * Hôte de la connexion tel que configuré (null s'il n'a pas été fourni).
+         */
+        public function host(): ?string
+        {
+            return $this->_host;
+        }
+
+        /**
+         * Base de données de la connexion telle que configurée (null si elle n'a pas été fournie).
+         */
+        public function database(): ?string
+        {
+            return $this->_database;
+        }
+
         public function setHost($host): void
         {
             if (is_string($host)) {
